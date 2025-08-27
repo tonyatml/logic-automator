@@ -14,7 +14,7 @@ struct ContentView: View {
                 Image(systemName: "music.note.list")
                     .font(.title3)
                     .foregroundColor(.blue)
-                Text("Dance & Go Automator")
+                Text("Logic Pro Automator")
                     .font(.headline)
                     .fontWeight(.semibold)
                 Spacer()
@@ -91,7 +91,7 @@ struct ContentView: View {
                         .foregroundColor(.white)
                         .cornerRadius(6)
                     }
-                    .disabled(commandText.isEmpty || isRunning || !isInitialized)
+                    .disabled(commandText.isEmpty || isRunning )
                     .buttonStyle(PlainButtonStyle())
                     
                     Button(action: clearOutput) {
@@ -142,7 +142,7 @@ struct ContentView: View {
             .padding(.horizontal)
             .padding(.bottom, 8)
         }
-        .frame(width: 320, height: 400)
+        .frame(width: 200, height: 400)
         .background(Color(NSColor.windowBackgroundColor))
     }
     

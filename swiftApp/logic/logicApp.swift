@@ -10,7 +10,7 @@ import SwiftUI
 @main
 struct logicApp: App {
     var body: some Scene {
-        MenuBarExtra("Dance & Go Automator", systemImage: "music.note.list") {
+        MenuBarExtra("Logic Pro Automator", systemImage: "music.note.list") {
             ContentView()
         }
         .menuBarExtraStyle(.window)
