@@ -80,6 +80,7 @@ struct ContentView: View {
                         .padding(8)
                         .background(Color(NSColor.controlBackgroundColor))
                         .cornerRadius(6)
+                        .textSelection(.enabled)
                 }
                 .frame(maxHeight: 200)
             }
@@ -114,7 +115,10 @@ struct ContentView: View {
         outputText += "🚀 Sending command: \(commandText)\n"
         
         DispatchQueue.global(qos: .userInitiated).async {
-            let command = "cd '\(getProjectRoot())' && python3 dance_go_automator.py \(commandText)"
+            let bundlePath = Bundle.main.bundlePath
+            let pythonScriptPath = "\(bundlePath)/Contents/Resources/dance_go_automator.py"
+            let projectRoot = getProjectRoot()
+            let command = "cd '\(projectRoot)' && /usr/bin/python3 '\(pythonScriptPath)' \(commandText)"
             let result = runShellCommand(command)
             
             DispatchQueue.main.async {
