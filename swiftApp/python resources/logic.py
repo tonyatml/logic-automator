@@ -423,3 +423,12 @@ def deleteLastTrack():
         windows = [x for x in logic.windows() if x.AXRoleDescription == "dialog"]
     delete_popup = windows[0]
     delete_popup.buttons("Delete")[0].Press()
+
+def newTrack():
+    """
+    Create a new track using Cmd+D shortcut
+    """
+    print("Creating new track...")
+    logic.activate()
+    logic.sendGlobalKeyWithModifiers("d", ["command"])
+    print("New track created")
