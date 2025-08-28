@@ -8,67 +8,14 @@ struct ContentView: View {
     @State private var isRunning = false
     
     var body: some View {
-        VStack(spacing: 16) {
-            // Header
-            HStack {
-                Image(systemName: "music.note.list")
-                    .font(.title3)
-                    .foregroundColor(.blue)
-                Text("Logic Pro Automator")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                Spacer()
-            }
-            .padding(.horizontal)
-            .padding(.top, 8)
-            
-            Divider()
-            
-            // Initialization Section
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Setup")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                    Spacer()
-                    if isInitialized {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                            .font(.caption)
-                    }
-                }
-                
-                Button(action: runSetup) {
-                    HStack {
-                        Image(systemName: "gear")
-                            .font(.caption)
-                        Text("Initialize Setup")
-                            .font(.caption)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
-                    .padding(.horizontal, 8)
-                    .background(isInitialized ? Color.green.opacity(0.2) : Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(6)
-                }
-                .disabled(isInitialized)
-                .buttonStyle(PlainButtonStyle())
-            }
-            .padding(.horizontal)
-            
-            Divider()
+        VStack {
             
             // Command Section
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Command")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
+            VStack {
                 
                 TextField("Enter command...", text: $commandText, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
                     .font(.caption)
-                    .lineLimit(2...4)
                 
                 HStack(spacing: 8) {
                     Button(action: sendCommand) {
@@ -94,24 +41,9 @@ struct ContentView: View {
                     .disabled(commandText.isEmpty || isRunning )
                     .buttonStyle(PlainButtonStyle())
                     
-                    Button(action: clearOutput) {
-                        HStack {
-                            Image(systemName: "trash")
-                                .font(.caption)
-                            Text("Clear")
-                                .font(.caption)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 6)
-                        .padding(.horizontal, 8)
-                        .background(Color.gray)
-                        .foregroundColor(.white)
-                        .cornerRadius(6)
-                    }
-                    .buttonStyle(PlainButtonStyle())
                 }
             }
-            .padding(.horizontal)
+            .padding()
             
             Divider()
             
@@ -127,6 +59,18 @@ struct ContentView: View {
                             .font(.caption2)
                             .foregroundColor(.secondary)
                     }
+                    Button(action: clearOutput) {
+                        HStack {
+                            Text("Clear")
+                                .font(.caption)
+                        }
+                        .frame(maxWidth: 80)
+                        .padding(.vertical, 6)
+                        .background(Color.gray)
+                        .cornerRadius(6)
+                    }
+                    .disabled(outputText.isEmpty)
+                    .buttonStyle(PlainButtonStyle())
                 }
                 
                 ScrollView {
@@ -137,12 +81,13 @@ struct ContentView: View {
                         .background(Color(NSColor.controlBackgroundColor))
                         .cornerRadius(6)
                 }
-                .frame(maxHeight: 120)
+                .frame(maxHeight: 200)
             }
             .padding(.horizontal)
-            .padding(.bottom, 8)
+            
+            Spacer()
         }
-        .frame(width: 200, height: 400)
+        .frame(width: 200, height: outputText.isEmpty ? 200: 400)
         .background(Color(NSColor.windowBackgroundColor))
     }
     
