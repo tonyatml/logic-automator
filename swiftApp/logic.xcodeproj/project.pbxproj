@@ -9,12 +9,14 @@
 /* Begin PBXBuildFile section */
 		2F5E6BA02E60213E00F2A4D4 /* dance_go_automator.py in Resources */ = {isa = PBXBuildFile; fileRef = 2F5E6B992E60213E00F2A4D4 /* dance_go_automator.py */; };
 		2F5E6BA22E6021A500F2A4D4 /* logic.py in Resources */ = {isa = PBXBuildFile; fileRef = 2F5E6BA12E6021A500F2A4D4 /* logic.py */; };
+		2F5E6BB32E602A0000F2A4D4 /* test.midi in Resources */ = {isa = PBXBuildFile; fileRef = 2F5E6BB22E602A0000F2A4D4 /* test.midi */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		2F11D93E2E5EF9E6004513B9 /* logic.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = logic.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2F5E6B992E60213E00F2A4D4 /* dance_go_automator.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = dance_go_automator.py; sourceTree = "<group>"; };
 		2F5E6BA12E6021A500F2A4D4 /* logic.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = logic.py; sourceTree = "<group>"; };
+		2F5E6BB22E602A0000F2A4D4 /* test.midi */ = {isa = PBXFileReference; lastKnownFileType = audio.midi; path = test.midi; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -61,6 +63,7 @@
 		2F5E6BA32E6021B100F2A4D4 /* python resources */ = {
 			isa = PBXGroup;
 			children = (
+				2F5E6BB22E602A0000F2A4D4 /* test.midi */,
 				2F5E6BA12E6021A500F2A4D4 /* logic.py */,
 				2F5E6B992E60213E00F2A4D4 /* dance_go_automator.py */,
 				2F5E6BA52E6021BA00F2A4D4 /* templates */,
@@ -135,6 +138,7 @@
 			files = (
 				2F5E6BA22E6021A500F2A4D4 /* logic.py in Resources */,
 				2F5E6BA02E60213E00F2A4D4 /* dance_go_automator.py in Resources */,
+				2F5E6BB32E602A0000F2A4D4 /* test.midi in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

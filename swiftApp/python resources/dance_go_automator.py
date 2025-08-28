@@ -287,13 +287,15 @@ def createDanceProject(project_name, tempo=124, key="A minor", midi_file=None):
     # Open the new project
     logic.open(project_path)
     
+    # logic.newTrack()
+
     # Set project tempo
-    if not setProjectTempo(tempo):
-        print("Warning: Could not set tempo")
+    # if not setProjectTempo(tempo):
+    #    print("Warning: Could not set tempo")
     
     # Set project key
-    if not setProjectKey(key):
-        print("Warning: Could not set key")
+    # if not setProjectKey(key):
+    #    print("Warning: Could not set key")
     
     # Import MIDI if provided
     if midi_file:
@@ -306,20 +308,13 @@ def createDanceProject(project_name, tempo=124, key="A minor", midi_file=None):
         if os.path.exists(midi_file):
             print(f"Importing MIDI file: {midi_file}")
             logic.importMidi(midi_file)
+            time.sleep(2)
         else:
             print(f"MIDI file not found: {original_midi_path}")
             print(f"Tried path: {midi_file}")
             print("Please provide the full path to the MIDI file")
         
-        # Set up Electric Piano instrument
-        if setupElectricPiano():
-            # Set cycle region to loop the imported MIDI
-            setCycleRegion()
-            
-            # Start playback
-            startPlayback()
-        else:
-            print("Could not set up Electric Piano instrument")
+       
     else:
         print("No MIDI file provided or file not found")
     
@@ -341,7 +336,7 @@ def main():
     project_name = sys.argv[1]
     tempo = int(sys.argv[2]) if len(sys.argv) > 2 else 124
     key = sys.argv[3] if len(sys.argv) > 3 else "A minor"
-    midi_file = sys.argv[4] if len(sys.argv) > 4 else None
+    midi_file = sys.argv[4] if len(sys.argv) > 4 else os.path.expanduser("~/Desktop/test.midi")
     
     print(f"Creating dance project: {project_name}")
     print(f"Tempo: {tempo} BPM")

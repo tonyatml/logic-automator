@@ -97,7 +97,7 @@ struct ContentView: View {
         outputText += "🔧 Running setup...\n"
         
         DispatchQueue.global(qos: .userInitiated).async {
-            let setupResult = runShellCommand("cd '\(getProjectRoot())' && chmod +x setup.sh && ./setup.sh")
+            let setupResult = runSetupScript()
             
             DispatchQueue.main.async {
                 outputText += setupResult
@@ -115,11 +115,7 @@ struct ContentView: View {
         outputText += "🚀 Sending command: \(commandText)\n"
         
         DispatchQueue.global(qos: .userInitiated).async {
-            let bundlePath = Bundle.main.bundlePath
-            let pythonScriptPath = "\(bundlePath)/Contents/Resources/dance_go_automator.py"
-            let projectRoot = getProjectRoot()
-            let command = "cd '\(projectRoot)' && /usr/bin/python3 '\(pythonScriptPath)' \(commandText)"
-            let result = runShellCommand(command)
+            let result = runPythonScript(commandText)
             
             DispatchQueue.main.async {
                 outputText += result
@@ -137,6 +133,66 @@ struct ContentView: View {
         // Get the path to the parent directory (logic-automator)
         let currentPath = FileManager.default.currentDirectoryPath
         return currentPath.replacingOccurrences(of: "/swiftApp/logic", with: "")
+    }
+    
+    private func runPythonScript(_ arguments: String) -> String {
+        let task = Process()
+        let pipe = Pipe()
+        
+        // Get the bundle path and script path
+        let bundlePath = Bundle.main.bundlePath
+        let pythonScriptPath = "\(bundlePath)/Contents/Resources/dance_go_automator.py"
+        let projectRoot = getProjectRoot()
+        
+        // Set up the process
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+        task.arguments = [pythonScriptPath] + arguments.components(separatedBy: " ")
+        task.currentDirectoryURL = URL(fileURLWithPath: projectRoot)
+        
+        // Set up output pipes
+        task.standardOutput = pipe
+        task.standardError = pipe
+        
+        do {
+            try task.run()
+            task.waitUntilExit()
+            
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? "Error: Could not read output"
+            
+            return output
+        } catch {
+            return "Error: \(error.localizedDescription)"
+        }
+    }
+    
+    private func runSetupScript() -> String {
+        let task = Process()
+        let pipe = Pipe()
+        
+        let projectRoot = getProjectRoot()
+        let setupScriptPath = "\(projectRoot)/setup.sh"
+        
+        // Set up the process
+        task.executableURL = URL(fileURLWithPath: "/bin/bash")
+        task.arguments = [setupScriptPath]
+        task.currentDirectoryURL = URL(fileURLWithPath: projectRoot)
+        
+        // Set up output pipes
+        task.standardOutput = pipe
+        task.standardError = pipe
+        
+        do {
+            try task.run()
+            task.waitUntilExit()
+            
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? "Error: Could not read output"
+            
+            return output
+        } catch {
+            return "Error: \(error.localizedDescription)"
+        }
     }
     
     private func runShellCommand(_ command: String) -> String {

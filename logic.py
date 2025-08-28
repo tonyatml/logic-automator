@@ -269,6 +269,7 @@ def importMidi(midiFile):
     logic.activate()
     logic.sendGlobalKeyWithModifiers("g", ["command", "shift"])
     logic.sendKeys(midiFile)
+    time.sleep(0.1)
     logic.sendKeys("\n")
 
     print("Pressing import...")
