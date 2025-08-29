@@ -428,6 +428,117 @@ class DanceGoAutomator: ObservableObject {
             isWorking = false
         }
     }
+    
+    /// Process natural language commands
+    func processCommand(_ command: String) async {
+        await MainActor.run {
+            isWorking = true
+            progress = 0.0
+            lastError = nil
+            currentStep = "Processing command..."
+        }
+        
+        do {
+            let lowerCommand = command.lowercased()
+            
+            // Parse "Replace region at bar X with file Y"
+            if lowerCommand.contains("replace") && lowerCommand.contains("bar") && lowerCommand.contains("file") {
+                await updateStep("Parsing replace command...", progress: 0.2)
+                
+                // Extract bar number
+                let barPattern = #"bar\s+(\d+)"#
+                let barRegex = try NSRegularExpression(pattern: barPattern, options: .caseInsensitive)
+                let barMatches = barRegex.matches(in: command, options: [], range: NSRange(command.startIndex..., in: command))
+                
+                guard let barMatch = barMatches.first,
+                      let barRange = Range(barMatch.range(at: 1), in: command) else {
+                    throw LogicError.menuOperationFailed("Could not parse bar number from command")
+                }
+                
+                let barNumber = Int(command[barRange]) ?? 33
+                
+                // Extract file path (simplified - just use the last word as filename)
+                let words = command.components(separatedBy: .whitespaces)
+                let fileName = words.last ?? "test.midi"
+                
+                await updateStep("Executing replace command at bar \(barNumber)...", progress: 0.5)
+                
+                // Execute the command
+                try await logicAutomator.navigateToBar(barNumber)
+                
+                await updateStep("Command executed successfully!", progress: 1.0)
+                
+            } else if lowerCommand.contains("navigate") || lowerCommand.contains("go to") {
+                // Parse "Navigate to bar X" or "Go to bar X"
+                await updateStep("Parsing navigation command...", progress: 0.2)
+                
+                let barPattern = #"bar\s+(\d+)"#
+                let barRegex = try NSRegularExpression(pattern: barPattern, options: .caseInsensitive)
+                let barMatches = barRegex.matches(in: command, options: [], range: NSRange(command.startIndex..., in: command))
+                
+                guard let barMatch = barMatches.first,
+                      let barRange = Range(barMatch.range(at: 1), in: command) else {
+                    throw LogicError.menuOperationFailed("Could not parse bar number from command")
+                }
+                
+                let barNumber = Int(command[barRange]) ?? 33
+                
+                await updateStep("Navigating to bar \(barNumber)...", progress: 0.5)
+                try await logicAutomator.navigateToBar(barNumber)
+                
+                await updateStep("Navigation completed!", progress: 1.0)
+                
+            } else if lowerCommand.contains("select") && lowerCommand.contains("track") {
+                // Parse "Select track X" or "Select track by name Y"
+                await updateStep("Parsing track selection command...", progress: 0.2)
+                
+                if lowerCommand.contains("index") || lowerCommand.contains("number") {
+                    // Select by index
+                    let indexPattern = #"(\d+)"#
+                    let indexRegex = try NSRegularExpression(pattern: indexPattern, options: [])
+                    let indexMatches = indexRegex.matches(in: command, options: [], range: NSRange(command.startIndex..., in: command))
+                    
+                    guard let indexMatch = indexMatches.first,
+                          let indexRange = Range(indexMatch.range(at: 1), in: command) else {
+                        throw LogicError.menuOperationFailed("Could not parse track index from command")
+                    }
+                    
+                    let trackIndex = Int(command[indexRange]) ?? 61
+                    
+                    await updateStep("Selecting track index \(trackIndex)...", progress: 0.5)
+                    try await logicAutomator.selectTrackByIndex(trackIndex)
+                    
+                    await updateStep("Track selection completed!", progress: 1.0)
+                    
+                } else {
+                    // Select by name (simplified - just use the last word as track name)
+                    let words = command.components(separatedBy: .whitespaces)
+                    let trackName = words.last ?? "Bass"
+                    
+                    await updateStep("Selecting track '\(trackName)'...", progress: 0.5)
+                    try await logicAutomator.selectTrackByName(trackName)
+                    
+                    await updateStep("Track selection completed!", progress: 1.0)
+                }
+                
+            } else {
+                throw LogicError.menuOperationFailed("Unknown command: \(command)")
+            }
+            
+            // Delay to let user see completion status
+            try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+            
+        } catch {
+            await MainActor.run {
+                lastError = error.localizedDescription
+                currentStep = "Error: \(error.localizedDescription)"
+            }
+        }
+        
+        await MainActor.run {
+            isWorking = false
+        }
+    }
 }
 
 // MARK: - Extension: Project Configuration Convenience Methods

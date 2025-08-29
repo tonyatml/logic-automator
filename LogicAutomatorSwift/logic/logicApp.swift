@@ -10,10 +10,9 @@ import SwiftUI
 @main
 struct logicApp: App {
     var body: some Scene {
-        WindowGroup {
+        MenuBarExtra("Logic Maestro") {
             ContentView()
         }
-        .windowStyle(.hiddenTitleBar)
-        .windowResizability(.contentSize)
+        .menuBarExtraStyle(.window)
     }
 }
