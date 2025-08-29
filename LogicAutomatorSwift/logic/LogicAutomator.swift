@@ -11,8 +11,19 @@ class LogicAutomator: ObservableObject {
     @Published var currentStatus = "Not connected"
     @Published var isWorking = false
     
+    // Callback for logging
+    var logCallback: ((String) -> Void)?
+    
     init() {
         setupLogicApp()
+    }
+    
+    // MARK: - Logging
+    
+    /// Log message with callback support
+    private func log(_ message: String) {
+        print(message)
+        logCallback?(message)
     }
     
     // MARK: - Initialization
@@ -24,12 +35,12 @@ class LogicAutomator: ObservableObject {
             self.logicApp = AXUIElementCreateApplication(logicApp.processIdentifier)
             isConnected = true
             currentStatus = "Connected to Logic Pro"
-            print("Logic Pro connected with PID: \(logicApp.processIdentifier)")
+            log("Logic Pro connected with PID: \(logicApp.processIdentifier)")
         } else {
             self.logicApp = nil
             isConnected = false
             currentStatus = "Logic Pro not running"
-            print("Logic Pro not found in running applications")
+            log("Logic Pro not found in running applications")
         }
     }
     
@@ -86,13 +97,13 @@ class LogicAutomator: ObservableObject {
             throw LogicError.appNotRunning
         }
         
-        print("Activating Logic Pro...")
+        log("Activating Logic Pro...")
         
         // Use NSWorkspace to activate Logic Pro
         let runningApps = NSWorkspace.shared.runningApplications
         if let logicApp = runningApps.first(where: { $0.bundleIdentifier == logicBundleID }) {
             logicApp.activate(options: .activateIgnoringOtherApps)
-            print("Logic Pro activation requested")
+            log("Logic Pro activation requested")
         }
         
         // Wait a bit for the activation to take effect
@@ -102,7 +113,7 @@ class LogicAutomator: ObservableObject {
             currentStatus = "Logic Pro activated"
         }
         
-        print("Logic Pro activation completed")
+        log("Logic Pro activation completed")
     }
     
     // MARK: - Project Operations
@@ -158,7 +169,7 @@ class LogicAutomator: ObservableObject {
         try await activateLogic()
         
         // Simplified implementation - just print operation
-        print("Setting tempo to \(bpm) BPM...")
+        log("Setting tempo to \(bpm) BPM...")
         try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
         
         await MainActor.run {
@@ -182,7 +193,7 @@ class LogicAutomator: ObservableObject {
         try await activateLogic()
         
         // Simplified implementation - just print operation
-        print("Setting key to \(key)...")
+        log("Setting key to \(key)...")
         try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
         
         await MainActor.run {
@@ -250,7 +261,7 @@ class LogicAutomator: ObservableObject {
     
     /// Replace region at specific bar with new audio file
     func replaceRegionAtBar(_ bar: Int, withAudioFile audioPath: String, onTrack trackName: String? = nil, trackIndex: Int? = nil) async throws {
-        print("Replacing region at bar \(bar) with audio file: \(audioPath)")
+        log("Replacing region at bar \(bar) with audio file: \(audioPath)")
         currentStatus = "Replacing region at bar \(bar)..."
         
         // 1. Navigate to the specific bar
@@ -278,7 +289,7 @@ class LogicAutomator: ObservableObject {
     
     /// Navigate to a specific bar in the timeline
     func navigateToBar(_ bar: Int) async throws {
-        print("Navigating to bar \(bar)")
+        log("Navigating to bar \(bar)")
         
         guard logicApp != nil else {
             throw LogicError.appNotRunning
@@ -289,24 +300,24 @@ class LogicAutomator: ObservableObject {
         try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
         
         // Use Cmd+L to open "Go to Position" dialog
-        print("Opening Go to Position dialog with Cmd+L...")
+        log("Opening Go to Position dialog with Cmd+L...")
         try await sendKeysWithModifiers("l", modifiers: ["cmd"])
         try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
         
         // Type the bar number
         let barString = String(bar)
-        print("Typing bar number: \(barString)")
+        log("Typing bar number: \(barString)")
         for char in barString {
             try await sendKeys(String(char))
             try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
         }
         
         // Press Enter to confirm
-        print("Pressing Enter to confirm...")
+        log("Pressing Enter to confirm...")
         try await sendKeys("\n")
         try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
         
-        print("Navigation to bar \(bar) completed")
+        log("Navigation to bar \(bar) completed")
     }
     
     /// Select a track by index number
@@ -429,7 +440,7 @@ class LogicAutomator: ObservableObject {
     
     /// Open Import MIDI File dialog
     private func openImportDialog() async throws {
-        print("Opening Import MIDI File dialog...")
+        log("Opening Import MIDI File dialog...")
         
         // Use Accessibility API to find and click menu item
         // Like Python: logic.menuItem("File", "Import", "MIDI File…").Press()
@@ -439,17 +450,17 @@ class LogicAutomator: ObservableObject {
     
     /// Click menu item using Accessibility API (simplified version)
     private func clickMenuItem(_ menuName: String, _ submenuName: String, _ itemName: String) async throws {
-        print("Clicking menu item: \(menuName) -> \(submenuName) -> \(itemName)")
+        log("Clicking menu item: \(menuName) -> \(submenuName) -> \(itemName)")
         
         // Try multiple times with reconnection
         for attempt in 1...3 {
-            print("Attempt \(attempt) to access menu bar...")
+            log("Attempt \(attempt) to access menu bar...")
             
             // Ensure Logic Pro is still connected
             setupLogicApp()
             
             guard let logicApp = logicApp else {
-                print("Logic Pro not running, attempt \(attempt)")
+                log("Logic Pro not running, attempt \(attempt)")
                 if attempt == 3 {
                     throw LogicError.appNotRunning
                 }
@@ -462,13 +473,13 @@ class LogicAutomator: ObservableObject {
             let result = AXUIElementCopyAttributeValue(logicApp, kAXMenuBarAttribute as CFString, &menuBar)
             
             if result == .success, let menuBar = menuBar {
-                print("Successfully got menu bar on attempt \(attempt)")
+                log("Successfully got menu bar on attempt \(attempt)")
                 // Find and click the menu item
                 try await findAndClickMenuItem(menuBar as! AXUIElement, [menuName, submenuName, itemName])
-                print("Menu item clicked successfully")
+                log("Menu item clicked successfully")
                 return
             } else {
-                print("Failed to get menu bar on attempt \(attempt), result: \(result)")
+                log("Failed to get menu bar on attempt \(attempt), result: \(result)")
                 if attempt == 3 {
                     throw LogicError.menuOperationFailed("Could not access menu bar after 3 attempts")
                 }
@@ -484,7 +495,7 @@ class LogicAutomator: ObservableObject {
         let currentMenuName = menuPath[0]
         let remainingPath = Array(menuPath.dropFirst())
         
-        print("Looking for menu item: '\(currentMenuName)' in current element")
+        log("Looking for menu item: '\(currentMenuName)' in current element")
         
         // Get children
         var children: CFTypeRef?
@@ -495,7 +506,7 @@ class LogicAutomator: ObservableObject {
         }
         
         let childrenArray = children as! [AXUIElement]
-        print("Found \(childrenArray.count) children in current element")
+        log("Found \(childrenArray.count) children in current element")
         
         // Find the menu item with matching title
         for (index, child) in childrenArray.enumerated() {
@@ -591,7 +602,7 @@ class LogicAutomator: ObservableObject {
         print("filename is \(fileName)")
         for char in fileName {
             try await sendKeys(String(char))
-            print("send: \(char)")
+            log("send: \(char)")
             try await Task.sleep(nanoseconds: 10_000_000) // 0.01 seconds
         }
         
@@ -602,7 +613,7 @@ class LogicAutomator: ObservableObject {
     
     /// Click Import button
     private func confirmImport() async throws {
-        print("Pressing import...")
+        log("Pressing import...")
         
         // In Python: import_window.buttons("Import")[0].Press()
         // For now, just press Enter which should work in most dialogs
@@ -640,7 +651,7 @@ class LogicAutomator: ObservableObject {
         }
         
         try await activateLogic()
-        print("Starting playback...")
+        log("Starting playback...")
         try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
         
         await MainActor.run {
@@ -683,7 +694,7 @@ class LogicAutomator: ObservableObject {
         try await activateLogic()
         
         // Send Cmd+T to create new track
-        print("Creating new track with Cmd+T...")
+        log("Creating new track with Cmd+T...")
         try await sendKeysWithModifiers("t", modifiers: ["cmd"])
         try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
         
@@ -705,7 +716,7 @@ class LogicAutomator: ObservableObject {
         try await activateLogic()
         
         // Send Cmd+T to open new track dialog
-        print("Creating new \(type) track...")
+        log("Creating new \(type) track...")
         try await sendKeysWithModifiers("t", modifiers: ["cmd"])
         try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
         
@@ -726,7 +737,7 @@ class LogicAutomator: ObservableObject {
     
     /// Send keyboard input using CGEvent
     private func sendKeys(_ keys: String) async throws {
-        print("Sending keys: \(keys)")
+        log("Sending keys: \(keys)")
         
         for char in keys {
             let keyCode = getKeyCode(for: String(char))

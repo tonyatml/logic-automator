@@ -16,7 +16,7 @@ struct ContentView: View {
     @State private var showingPresetPicker = false
     @State private var selectedPreset: DanceGoAutomator.ProjectConfig?
     @State private var commandText = ""
-    @State private var outputText = ""
+    // Remove this line as we'll use danceAutomator.outputLog instead
     
     private let keys = ["C major", "G major", "D major", "A major", "E major", "B major", "F# major", "C# major",
                         "F major", "Bb major", "Eb major", "Ab major", "Db major", "Gb major", "Cb major",
@@ -71,60 +71,49 @@ struct ContentView: View {
             
             
             
-            ScrollView {
-                Text(outputText.isEmpty ? "No output yet..." : outputText)
-                    .font(.system(.caption2, design: .monospaced))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(8)
-                    .cornerRadius(6)
-                    .textSelection(.enabled)
-                
-            }
+                         ScrollView {
+                 Text(danceAutomator.outputLog.isEmpty ? "No output yet..." : danceAutomator.outputLog)
+                     .font(.system(.caption2, design: .monospaced))
+                     .frame(maxWidth: .infinity, alignment: .leading)
+                     .padding(8)
+                     .cornerRadius(6)
+                     .textSelection(.enabled)
+                 
+             }
             .frame(maxHeight: .infinity)
             .padding(.horizontal, 20)
             
             Spacer()
             
-            HStack {
-                
-                if !outputText.isEmpty {
-                    Text("\(outputText.components(separatedBy: "\n").count) lines")
-                        .font(.caption2)
-                    Button(action: clearOutput) {
-                        HStack {
-                            Text("Clear")
-                                .font(.caption)
-                        }
-                        .frame(maxWidth: 80)
-                        .padding(.vertical, 6)
-                        .background(Color.gray)
-                        .cornerRadius(6)
-                    }
-                    .disabled(outputText.isEmpty)
-                    .buttonStyle(PlainButtonStyle())
-                }
-                
-            }
+                         HStack {
+                 
+                 if !danceAutomator.outputLog.isEmpty {
+                     
+                     Button(action: clearOutput) {
+                         HStack {
+                             Text("Clear")
+                                 .font(.caption)
+                         }
+                         .frame(maxWidth: 80)
+                         .padding(.vertical, 6)
+                         .cornerRadius(6)
+                     }
+                     .disabled(danceAutomator.outputLog.isEmpty)
+                     .buttonStyle(PlainButtonStyle())
+                 }
+                 
+             }
             .padding()
         }
         .frame(width: 400, height: 500)
         .background(.black)
         .foregroundColor(.white)
-        .alert("Error", isPresented: .constant(danceAutomator.lastError != nil)) {
-            Button("OK") {
-                danceAutomator.clearError()
-            }
-        } message: {
-            if let error = danceAutomator.lastError {
-                Text(error)
-            }
-        }
         
     }
     
-    private func clearOutput() {
-        outputText = ""
-    }
+         private func clearOutput() {
+         danceAutomator.clearLog()
+     }
     
     private func createProject() {
         Task {

@@ -6,10 +6,20 @@ import SwiftUI
 class DanceGoAutomator: ObservableObject {
     private let logicAutomator = LogicAutomator()
     
+    init() {
+        // Set up logging callback
+        logicAutomator.logCallback = { [weak self] message in
+            Task { @MainActor in
+                await self?.appendToLog(message)
+            }
+        }
+    }
+    
     @Published var isWorking = false
     @Published var currentStep = ""
     @Published var progress: Double = 0.0
     @Published var lastError: String?
+    @Published var outputLog: String = ""
     
     // MARK: - Project Configuration
     
@@ -199,11 +209,27 @@ class DanceGoAutomator: ObservableObject {
     
     /// Update current step and progress
     private func updateStep(_ step: String, progress: Double) async {
-        print("step is: \(step)")
+        await appendToLog("step is: \(step)")
         await MainActor.run {
             currentStep = step
             self.progress = progress
         }
+    }
+    
+    /// Append message to output log
+    private func appendToLog(_ message: String) async {
+        await MainActor.run {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "HH:mm:ss"
+            let timestamp = formatter.string(from: Date())
+            let logEntry = "[\(timestamp)] \(message)\n"
+            outputLog += logEntry
+        }
+    }
+    
+    /// Clear output log
+    func clearLog() {
+        outputLog = ""
     }
     
     // MARK: - Utility Methods
