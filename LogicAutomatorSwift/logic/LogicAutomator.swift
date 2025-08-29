@@ -24,9 +24,12 @@ class LogicAutomator: ObservableObject {
             self.logicApp = AXUIElementCreateApplication(logicApp.processIdentifier)
             isConnected = true
             currentStatus = "Connected to Logic Pro"
+            print("Logic Pro connected with PID: \(logicApp.processIdentifier)")
         } else {
+            self.logicApp = nil
             isConnected = false
             currentStatus = "Logic Pro not running"
+            print("Logic Pro not found in running applications")
         }
     }
     
@@ -249,23 +252,40 @@ class LogicAutomator: ObservableObject {
     private func clickMenuItem(_ menuName: String, _ submenuName: String, _ itemName: String) async throws {
         print("Clicking menu item: \(menuName) -> \(submenuName) -> \(itemName)")
         
-        guard let logicApp = logicApp else {
-            throw LogicError.appNotRunning
+        // Try multiple times with reconnection
+        for attempt in 1...3 {
+            print("Attempt \(attempt) to access menu bar...")
+            
+            // Ensure Logic Pro is still connected
+            setupLogicApp()
+            
+            guard let logicApp = logicApp else {
+                print("Logic Pro not running, attempt \(attempt)")
+                if attempt == 3 {
+                    throw LogicError.appNotRunning
+                }
+                try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                continue
+            }
+            
+            // Get menu bar
+            var menuBar: CFTypeRef?
+            let result = AXUIElementCopyAttributeValue(logicApp, kAXMenuBarAttribute as CFString, &menuBar)
+            
+            if result == .success, let menuBar = menuBar {
+                print("Successfully got menu bar on attempt \(attempt)")
+                // Find and click the menu item
+                try await findAndClickMenuItem(menuBar as! AXUIElement, [menuName, submenuName, itemName])
+                print("Menu item clicked successfully")
+                return
+            } else {
+                print("Failed to get menu bar on attempt \(attempt), result: \(result)")
+                if attempt == 3 {
+                    throw LogicError.menuOperationFailed("Could not access menu bar after 3 attempts")
+                }
+                try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+            }
         }
-        
-        // Get menu bar
-        var menuBar: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(logicApp, kAXMenuBarAttribute as CFString, &menuBar)
-        
-        guard result == .success, let menuBar = menuBar else {
-            print("Failed to get menu bar")
-            throw LogicError.menuOperationFailed("Could not access menu bar")
-        }
-        
-        // Find and click the menu item
-        try await findAndClickMenuItem(menuBar as! AXUIElement, [menuName, submenuName, itemName])
-        
-        print("Menu item clicked successfully")
     }
     
     /// Recursively find and click menu item
