@@ -43,14 +43,14 @@ struct ContentView: View {
                 .padding(.top, -20)
             
             // Command input area
-            HStack (alignment: .bottom) {
+            HStack (alignment: .center) {
                 TextEditor(text: $commandText)
-                    .frame(height: 60)
+                    .frame(height: 40)
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
                             .stroke(Color.gray, lineWidth: 1)
                     )
-                    .padding(.horizontal,20)
+                    .padding(.leading,20)
                 
                 Button(action: sendCommand) {
                     HStack {
@@ -65,55 +65,84 @@ struct ContentView: View {
                 }
                 .disabled(commandText.isEmpty)
                 .buttonStyle(PlainButtonStyle())
-                .padding(.trailing,12)
+                .padding(.trailing,6)
             }
             
-            
-            
-            
-                         ScrollView {
-                 Text(danceAutomator.outputLog.isEmpty ? "No output yet..." : danceAutomator.outputLog)
-                     .font(.system(.caption2, design: .monospaced))
-                     .frame(maxWidth: .infinity, alignment: .leading)
-                     .padding(8)
-                     .cornerRadius(6)
-                     .textSelection(.enabled)
-                 
-             }
+            ScrollView {
+                Text(danceAutomator.outputLog.isEmpty ? "No output yet..." : danceAutomator.outputLog)
+                    .font(.system(.caption2, design: .monospaced))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(8)
+                    .cornerRadius(6)
+                    .textSelection(.enabled)
+                
+            }
             .frame(maxHeight: .infinity)
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 16)
             
             Spacer()
             
-                         HStack {
-                 
-                 if !danceAutomator.outputLog.isEmpty {
-                     
-                     Button(action: clearOutput) {
-                         HStack {
-                             Text("Clear")
-                                 .font(.caption)
-                         }
-                         .frame(maxWidth: 80)
-                         .padding(.vertical, 6)
-                         .cornerRadius(6)
-                     }
-                     .disabled(danceAutomator.outputLog.isEmpty)
-                     .buttonStyle(PlainButtonStyle())
-                 }
-                 
-             }
+            // bottom buttons
+            HStack {
+                Button(action: clearOutput) {
+                    HStack {
+                        Text("Clear Log")
+                            .font(.caption)
+                    }
+                    .frame(maxWidth: 80)
+                    .padding(.vertical, 6)
+                    .cornerRadius(6)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.gray, lineWidth: 1)
+                    )
+                }
+                .disabled(danceAutomator.outputLog.isEmpty)
+                .buttonStyle(PlainButtonStyle())
+                
+                Button(action: clearOutput) {
+                    HStack {
+                        Text("Settings")
+                            .font(.caption)
+                    }
+                    .frame(maxWidth: 80)
+                    .padding(.vertical, 6)
+                    .cornerRadius(6)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.gray, lineWidth: 1)
+                    )
+                }
+                .disabled(danceAutomator.outputLog.isEmpty)
+                .buttonStyle(PlainButtonStyle())
+                
+                Button(action: clearOutput) {
+                    HStack {
+                        Text("Help")
+                            .font(.caption)
+                    }
+                    .frame(maxWidth: 80)
+                    .padding(.vertical, 6)
+                    .cornerRadius(6)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.gray, lineWidth: 1)
+                    )
+                }
+                .disabled(danceAutomator.outputLog.isEmpty)
+                .buttonStyle(PlainButtonStyle())
+            }
             .padding()
         }
-        .frame(width: 400, height: 500)
+        .frame(width: 300, height: 500)
         .background(.black)
         .foregroundColor(.white)
         
     }
     
-         private func clearOutput() {
-         danceAutomator.clearLog()
-     }
+    private func clearOutput() {
+        danceAutomator.clearLog()
+    }
     
     private func createProject() {
         Task {
