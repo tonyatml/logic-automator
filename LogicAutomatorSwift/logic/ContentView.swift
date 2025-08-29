@@ -43,69 +43,33 @@ struct ContentView: View {
                 .padding(.top, -20)
             
             // Command input area
-            
-            HStack {
+            HStack (alignment: .bottom) {
                 TextEditor(text: $commandText)
-                    .frame(width: 260, height: 90)
+                    .frame(height: 60)
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
                             .stroke(Color.gray, lineWidth: 1)
                     )
-                    .overlay(
-                        Group {
-                            if commandText.isEmpty {
-                                Text("Enter command (e.g., 'Open Logic Pro')")
-                                    .foregroundColor(.gray)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 8)
-                                    .allowsHitTesting(false)
-                            }
-                        },
-                        alignment: .topLeading
-                    )
-                
-                Spacer()
+                    .padding(.horizontal,20)
                 
                 Button(action: sendCommand) {
                     HStack {
                         Text("Send")
                             .font(.caption)
                     }
-                    .frame(width: 80)
+                    .frame(maxWidth: 80)
                     .padding(.vertical, 6)
+                    
                     .background(Color.blue)
                     .cornerRadius(6)
                 }
-                //.disabled(commandText.isEmpty || danceAutomator.isWorking)
-                
-            }
-            .padding(.horizontal, 20)
-            
-            
-            
-            HStack {
-                Text("Output")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                Spacer()
-                if !outputText.isEmpty {
-                    Text("\(outputText.components(separatedBy: "\n").count) lines")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-                Button(action: clearOutput) {
-                    HStack {
-                        Text("Clear")
-                            .font(.caption)
-                    }
-                    .frame(maxWidth: 80)
-                    .padding(.vertical, 6)
-                    .background(Color.gray)
-                    .cornerRadius(6)
-                }
-                .disabled(outputText.isEmpty)
+                .disabled(commandText.isEmpty)
                 .buttonStyle(PlainButtonStyle())
+                .padding(.trailing,12)
             }
+            
+            
+            
             
             ScrollView {
                 Text(outputText.isEmpty ? "No output yet..." : outputText)
@@ -117,16 +81,35 @@ struct ContentView: View {
                 
             }
             .frame(maxHeight: .infinity)
-            
-            
-            .padding(.horizontal)
+            .padding(.horizontal, 20)
             
             Spacer()
+            
+            HStack {
+                
+                if !outputText.isEmpty {
+                    Text("\(outputText.components(separatedBy: "\n").count) lines")
+                        .font(.caption2)
+                    Button(action: clearOutput) {
+                        HStack {
+                            Text("Clear")
+                                .font(.caption)
+                        }
+                        .frame(maxWidth: 80)
+                        .padding(.vertical, 6)
+                        .background(Color.gray)
+                        .cornerRadius(6)
+                    }
+                    .disabled(outputText.isEmpty)
+                    .buttonStyle(PlainButtonStyle())
+                }
+                
+            }
+            .padding()
         }
         .frame(width: 400, height: 500)
         .background(.black)
         .foregroundColor(.white)
-        
         .alert("Error", isPresented: .constant(danceAutomator.lastError != nil)) {
             Button("OK") {
                 danceAutomator.clearError()
@@ -214,23 +197,6 @@ struct StatusView: View {
                 }
                 
                 Spacer()
-            }
-            
-            // Current step
-            if !danceAutomator.currentStep.isEmpty {
-                VStack(spacing: 4) {
-                    Text(danceAutomator.currentStep)
-                        .font(.caption)
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.center)
-                    
-                    if danceAutomator.progress > 0 {
-                        ProgressView(value: danceAutomator.progress)
-                            .progressViewStyle(LinearProgressViewStyle())
-                            .frame(height: 4)
-                    }
-                }
-                .padding(.horizontal, 20)
             }
         }
         .padding(.horizontal, 20)

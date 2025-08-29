@@ -441,6 +441,8 @@ class DanceGoAutomator: ObservableObject {
         do {
             let lowerCommand = command.lowercased()
             
+            try await createDanceProject(name: "test")
+            
             // Parse "Replace region at bar X with file Y"
             if lowerCommand.contains("replace") && lowerCommand.contains("bar") && lowerCommand.contains("file") {
                 await updateStep("Parsing replace command...", progress: 0.2)
