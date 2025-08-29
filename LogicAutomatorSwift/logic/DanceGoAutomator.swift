@@ -370,6 +370,64 @@ class DanceGoAutomator: ObservableObject {
             isWorking = false
         }
     }
+    
+    /// Test region replacement functionality
+    func testRegionReplacement(bar: Int, audioFilePath: String, trackName: String? = nil, trackIndex: Int? = nil) async {
+        await MainActor.run {
+            isWorking = true
+            progress = 0.0
+            lastError = nil
+        }
+        
+        do {
+            // Check permissions
+            await updateStep("Checking permissions...", progress: 0.1)
+            guard logicAutomator.checkAccessibilityPermissions() else {
+                throw LogicError.accessibilityNotEnabled
+            }
+            
+            // Launch Logic Pro
+            await updateStep("Launching Logic Pro...", progress: 0.2)
+            try await logicAutomator.launchLogicPro()
+            
+            // Create a simple project first
+            await updateStep("Creating test project...", progress: 0.3)
+            //let config = ProjectConfig(name: "Region Test", tempo: 120, key: "C major")
+            //let projectPath = try await createProjectFromTemplate(config: config)
+            
+            // Open project
+            await updateStep("Opening test project...", progress: 0.4)
+            //try await logicAutomator.openProject(projectPath)
+            
+            // Just navigate to the specific bar
+            await updateStep("Navigating to bar \(bar)...", progress: 0.6)
+            try await logicAutomator.navigateToBar(bar)
+            
+            // Select track if specified
+            if let trackIndex = trackIndex {
+                await updateStep("Selecting track index \(trackIndex)...", progress: 0.7)
+            //    try await logicAutomator.selectTrackByIndex(trackIndex)
+            } else if let trackName = trackName {
+                await updateStep("Selecting track '\(trackName)'...", progress: 0.7)
+            //    try await logicAutomator.selectTrackByName(trackName)
+            }
+            
+            await updateStep("Region replacement test completed!", progress: 1.0)
+            
+            // Delay to let user see completion status
+            try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+            
+        } catch {
+            await MainActor.run {
+                lastError = error.localizedDescription
+                currentStep = "Error: \(error.localizedDescription)"
+            }
+        }
+        
+        await MainActor.run {
+            isWorking = false
+        }
+    }
 }
 
 // MARK: - Extension: Project Configuration Convenience Methods

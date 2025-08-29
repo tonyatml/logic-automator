@@ -86,9 +86,23 @@ class LogicAutomator: ObservableObject {
             throw LogicError.appNotRunning
         }
         
+        print("Activating Logic Pro...")
+        
+        // Use NSWorkspace to activate Logic Pro
+        let runningApps = NSWorkspace.shared.runningApplications
+        if let logicApp = runningApps.first(where: { $0.bundleIdentifier == logicBundleID }) {
+            logicApp.activate(options: .activateIgnoringOtherApps)
+            print("Logic Pro activation requested")
+        }
+        
+        // Wait a bit for the activation to take effect
+        try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+        
         await MainActor.run {
             currentStatus = "Logic Pro activated"
         }
+        
+        print("Logic Pro activation completed")
     }
     
     // MARK: - Project Operations
@@ -228,14 +242,189 @@ class LogicAutomator: ObservableObject {
         await MainActor.run {
             currentStatus = "MIDI file imported successfully"
         }
+        
+        try await startPlayback()
     }
     
-    /// Select last track
+    // MARK: - Advanced Region Operations
+    
+    /// Replace region at specific bar with new audio file
+    func replaceRegionAtBar(_ bar: Int, withAudioFile audioPath: String, onTrack trackName: String? = nil, trackIndex: Int? = nil) async throws {
+        print("Replacing region at bar \(bar) with audio file: \(audioPath)")
+        currentStatus = "Replacing region at bar \(bar)..."
+        
+        // 1. Navigate to the specific bar
+        try await navigateToBar(bar)
+        
+        // 2. Select the target track (if specified)
+        if let trackIndex = trackIndex {
+            try await selectTrackByIndex(trackIndex)
+        } else if let trackName = trackName {
+            try await selectTrackByName(trackName)
+        }
+        
+        // 3. Delete existing region at that position
+        // try await deleteRegionAtCurrentPosition()
+        
+        // 4. Import the new audio file
+        //try await importAudioFile(audioPath)
+        // try await importMIDI(audioPath)
+        
+        // 5. Place the audio at the correct bar position
+        // try await placeAudioAtBar(bar)
+        
+        currentStatus = "Region replaced successfully at bar \(bar)"
+    }
+    
+    /// Navigate to a specific bar in the timeline
+    func navigateToBar(_ bar: Int) async throws {
+        print("Navigating to bar \(bar)")
+        
+        guard logicApp != nil else {
+            throw LogicError.appNotRunning
+        }
+        
+        // Activate Logic Pro first
+        try await activateLogic()
+        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        
+        // Use Cmd+L to open "Go to Position" dialog
+        print("Opening Go to Position dialog with Cmd+L...")
+        try await sendKeysWithModifiers("l", modifiers: ["cmd"])
+        try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+        
+        // Type the bar number
+        let barString = String(bar)
+        print("Typing bar number: \(barString)")
+        for char in barString {
+            try await sendKeys(String(char))
+            try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+        }
+        
+        // Press Enter to confirm
+        print("Pressing Enter to confirm...")
+        try await sendKeys("\n")
+        try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+        
+        print("Navigation to bar \(bar) completed")
+    }
+    
+    /// Select a track by index number
+    func selectTrackByIndex(_ index: Int) async throws {
+        print("Selecting track by index: \(index)")
+        
+        guard logicApp != nil else {
+            throw LogicError.appNotRunning
+        }
+        
+        // Activate Logic Pro first
+        try await activateLogic()
+        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        
+        // First, go to the top of the track list
+        print("Going to top of track list...")
+        try await sendKeysWithModifiers("home", modifiers: ["cmd"])
+        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        
+        // Then move down to the target track index
+        print("Moving down to track index \(index)...")
+        for i in 1..<index {
+            try await sendKeys("down")
+            try await Task.sleep(nanoseconds: 50_000_000) // 0.05 seconds
+        }
+        
+        print("Track selection by index completed")
+    }
+    
+    /// Select a track by name
+    func selectTrackByName(_ trackName: String) async throws {
+        print("Selecting track by name: \(trackName)")
+        
+        guard logicApp != nil else {
+            throw LogicError.appNotRunning
+        }
+        
+        // Activate Logic Pro first
+        try await activateLogic()
+        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        
+        // Use Cmd+F to open find dialog
+        print("Opening find dialog with Cmd+F...")
+        try await sendKeysWithModifiers("f", modifiers: ["cmd"])
+        try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+        
+        // Type the track name
+        print("Typing track name: \(trackName)")
+        for char in trackName {
+            try await sendKeys(String(char))
+            try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+        }
+        
+        // Press Enter to select
+        print("Pressing Enter to select track...")
+        try await sendKeys("\n")
+        try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+        
+        print("Track selection by name completed")
+    }
+    
+    /// Delete region at current position
+    private func deleteRegionAtCurrentPosition() async throws {
+        print("Deleting region at current position")
+        
+        // Select the region at current position
+        try await sendKeysWithModifiers("a", modifiers: ["cmd"]) // Select all
+        try await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+        
+        // Delete the selected region
+        try await sendKeysWithModifiers("delete", modifiers: [])
+        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+    }
+    
+    /// Import audio file using menu navigation
+    private func importAudioFile(_ audioPath: String) async throws {
+        print("Importing audio file: \(audioPath)")
+        
+        // Use menu: File -> Import -> Audio Files...
+        try await clickMenuItem("File", "Import", "Other…")
+        try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+        
+        // Navigate to folder and select file
+        try await navigateToFolder(audioPath)
+        
+        // Confirm import
+        try await confirmImport()
+        
+        try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+    }
+    
+    /// Place audio at specific bar position
+    private func placeAudioAtBar(_ bar: Int) async throws {
+        print("Placing audio at bar \(bar)")
+        
+        // Navigate to the bar again to ensure we're at the right position
+        try await navigateToBar(bar)
+        
+        // Select the imported audio region
+        try await sendKeysWithModifiers("a", modifiers: ["cmd"]) // Select all
+        try await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+        
+        // Use Cmd+J to snap to grid (ensures proper alignment)
+        try await sendKeysWithModifiers("j", modifiers: ["cmd"])
+        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+    }
+    
+    /// Select last track (like Python implementation)
     private func selectLastTrack() async throws {
         print("Selecting last track...")
-        // Send Cmd+Shift+Down to select last track
-        try await sendKeysWithModifiers("down", modifiers: ["cmd", "shift"])
-        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        
+        // Like Python: logic.sendGlobalKey("down") for 5 times
+        for i in 0..<5 {
+            try await sendKeys("down")
+            try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+        }
+        
+        print("Last track selection completed")
     }
     
     /// Open Import MIDI File dialog
@@ -399,8 +588,10 @@ class LogicAutomator: ObservableObject {
         
         // In Python: logic.sendKeys(midiFile) - sends just the filename
         // Type the filename
+        print("filename is \(fileName)")
         for char in fileName {
             try await sendKeys(String(char))
+            print("send: \(char)")
             try await Task.sleep(nanoseconds: 10_000_000) // 0.01 seconds
         }
         
@@ -455,6 +646,7 @@ class LogicAutomator: ObservableObject {
         await MainActor.run {
             currentStatus = "Playback started"
         }
+        try await sendKeys(" ")
     }
     
     /// Stop playback

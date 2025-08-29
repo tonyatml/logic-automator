@@ -8,6 +8,11 @@ struct ContentView: View {
     @State private var key = "A minor"
     @State private var midiFilePath = ""
     @State private var showingFilePicker = false
+    @State private var audioFilePath = "/Users/tonyniu/Desktop/test.midi"
+    @State private var showingAudioFilePicker = false
+    @State private var targetBar = 33
+    @State private var targetTrackName = ""
+    @State private var targetTrackIndex = 61
     @State private var showingPresetPicker = false
     @State private var selectedPreset: DanceGoAutomator.ProjectConfig?
     
@@ -187,6 +192,74 @@ struct ContentView: View {
                     }
                     .disabled(danceAutomator.isWorking)
                 }
+                
+                // Advanced Region Operations Section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Advanced Region Operations")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    
+                    // Bar number input
+                    HStack {
+                        Text("Target Bar:")
+                            .frame(width: 80, alignment: .leading)
+                        TextField("33", value: $targetBar, format: .number)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .frame(width: 80)
+                    }
+                    
+                    // Track index input
+                    HStack {
+                        Text("Track Index:")
+                            .frame(width: 80, alignment: .leading)
+                        TextField("61", value: $targetTrackIndex, format: .number)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .frame(width: 80)
+                    }
+                    
+                    // Track name input (optional)
+                    HStack {
+                        Text("Track Name:")
+                            .frame(width: 80, alignment: .leading)
+                        TextField("Optional", text: $targetTrackName)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                    }
+                    
+                    // Audio file selection
+                    HStack {
+                        Text("Audio File:")
+                            .frame(width: 80, alignment: .leading)
+                        TextField("Select audio file...", text: $audioFilePath)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .disabled(true)
+                        
+                        Button("Browse") {
+                            showingAudioFilePicker = true
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    
+                    // Test Region Replacement button
+                    if !audioFilePath.isEmpty {
+                        Button(action: testRegionReplacement) {
+                            HStack {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                    .font(.title2)
+                                Text("Test Region Replacement")
+                                    .font(.headline)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.purple)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                        }
+                        .disabled(danceAutomator.isWorking)
+                    }
+                }
+                .padding()
+                .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
+                .cornerRadius(10)
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 20)
@@ -205,6 +278,20 @@ struct ContentView: View {
                 }
             case .failure(let error):
                 print("File selection failed: \(error.localizedDescription)")
+            }
+        }
+        .fileImporter(
+            isPresented: $showingAudioFilePicker,
+            allowedContentTypes: [.audio, .wav, .aiff, .mp3],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let files):
+                if let file = files.first {
+                    audioFilePath = file.path
+                }
+            case .failure(let error):
+                print("Audio file selection failed: \(error.localizedDescription)")
             }
         }
         .alert("Error", isPresented: .constant(danceAutomator.lastError != nil)) {
@@ -238,6 +325,18 @@ struct ContentView: View {
     private func testMidiImport() {
         Task {
             await danceAutomator.testMidiImport(midiFilePath: midiFilePath)
+        }
+    }
+    
+    private func testRegionReplacement() {
+        Task {
+            let trackName = targetTrackName.isEmpty ? nil : targetTrackName
+            await danceAutomator.testRegionReplacement(
+                bar: targetBar,
+                audioFilePath: audioFilePath,
+                trackName: trackName,
+                trackIndex: targetTrackIndex
+            )
         }
     }
 }
