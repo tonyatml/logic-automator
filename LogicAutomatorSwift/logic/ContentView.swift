@@ -249,6 +249,8 @@ struct ContentView: View {
                 speechRecognizer.onFinalResult = { text in
                     // Replace the text field content with the new recognition result
                     commandText = text
+                    // try to auto execute command
+                    sendCommand()
                 }
             }
         
