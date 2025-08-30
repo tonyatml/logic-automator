@@ -52,6 +52,9 @@ class CommandAutomator: ObservableObject {
             currentStep = "Processing command..."
         }
         
+        // Add command to log
+        await appendToLog("🔄 Processing command: \(command)")
+        
         do {
             let lowerCommand = command.lowercased()
             
@@ -103,6 +106,9 @@ class CommandAutomator: ObservableObject {
             
             await updateStep("Command executed successfully!", progress: 1.0)
             
+            // Add success message to log
+            await appendToLog("✅ Command executed successfully: \(command)")
+            
             // Delay to let user see completion status
             try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
             
@@ -111,6 +117,9 @@ class CommandAutomator: ObservableObject {
                 lastError = error.localizedDescription
                 currentStep = "Error: \(error.localizedDescription)"
             }
+            
+            // Add error to log
+            await appendToLog("❌ Error: \(error.localizedDescription)")
         }
         
         await MainActor.run {

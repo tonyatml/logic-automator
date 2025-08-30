@@ -214,6 +214,22 @@ struct ContentView: View {
                     )
                 }
                 .buttonStyle(PlainButtonStyle())
+                
+                // Exit button
+                Button(action: exitApp) {
+                    HStack {
+                        Text("Exit")
+                            .font(.caption)
+                    }
+                    .frame(maxWidth: 80)
+                    .padding(.vertical, 6)
+                    .cornerRadius(6)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.gray, lineWidth: 1)
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
             }
             .padding()
         }
@@ -271,6 +287,11 @@ struct ContentView: View {
                 }
             }
         }
+    }
+    
+    /// Exit the application
+    private func exitApp() {
+        NSApplication.shared.terminate(nil)
     }
 }
 

@@ -52,7 +52,7 @@ class LogicAutomator: ObservableObject {
     
     // MARK: - Application Control
     
-    /// Launch Logic Pro
+    /// Launch Logic Pro using multiple methods for better reliability
     func launchLogicPro() async throws {
         guard !isConnected else { return }
         
@@ -61,69 +61,245 @@ class LogicAutomator: ObservableObject {
             isWorking = true
         }
         
-        // Use new API to launch application
+        log("Launching Logic Pro using enhanced launch methods...")
+        
+        // Method 1: Use NSWorkspace with new API
+        await launchWithNSWorkspace()
+        
+        // Method 2: Use System Events as fallback if needed
+        if !isConnected {
+            await launchWithSystemEvents()
+        }
+        
+        // Wait for Logic Pro to launch with enhanced detection
+        await waitForLogicProToLaunch()
+        
+        await MainActor.run {
+            isWorking = false
+        }
+        
+        if !isConnected {
+            throw LogicError.timeout("Logic Pro failed to launch within 30 seconds")
+        }
+    }
+    
+    /// Launch Logic Pro using NSWorkspace
+    private func launchWithNSWorkspace() async {
+        log("Attempting launch with NSWorkspace...")
+        
         let url = URL(fileURLWithPath: "/Applications/Logic Pro.app")
         let config = NSWorkspace.OpenConfiguration()
         
         do {
             _ = try await NSWorkspace.shared.openApplication(at: url, configuration: config)
+            log("NSWorkspace launch successful")
         } catch {
+            log("NSWorkspace launch failed, trying fallback method...")
             // Fallback to old method
             NSWorkspace.shared.launchApplication("Logic Pro")
         }
+    }
+    
+    /// Launch Logic Pro using System Events
+    private func launchWithSystemEvents() async {
+        log("Attempting launch with System Events...")
         
-        // Wait for Logic Pro to launch
-        for _ in 0..<50 {
-            try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        let script = """
+        tell application "Logic Pro" to activate
+        """
+        
+        do {
+            let appleScript = NSAppleScript(source: script)
+            var error: NSDictionary?
+            appleScript?.executeAndReturnError(&error)
+            
+            if let error = error {
+                log("System Events launch failed: \(error)")
+            } else {
+                log("System Events launch successful")
+            }
+        } catch {
+            log("System Events launch error: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Wait for Logic Pro to launch with enhanced detection
+    private func waitForLogicProToLaunch() async {
+        log("Waiting for Logic Pro to launch...")
+        
+        for attempt in 1...60 { // Increased timeout to 30 seconds
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
             setupLogicApp()
+            
             if isConnected {
                 await MainActor.run {
                     currentStatus = "Logic Pro launched and connected"
-                    isWorking = false
                 }
+                log("Logic Pro successfully launched and connected (attempt \(attempt))")
                 return
+            }
+            
+            if attempt % 10 == 0 {
+                log("Still waiting for Logic Pro to launch... (attempt \(attempt)/60)")
             }
         }
         
-        await MainActor.run {
-            isWorking = false
-        }
-        throw LogicError.timeout("Logic Pro failed to launch within 25 seconds")
+        log("Logic Pro launch timeout reached")
     }
     
-    /// Activate Logic Pro
+    /// Activate Logic Pro using multiple methods for better reliability
     func activateLogic() async throws {
         guard logicApp != nil else {
             throw LogicError.appNotRunning
         }
         
-        log("Activating Logic Pro...")
+        log("Activating Logic Pro using enhanced activation methods...")
         
-        // Use NSWorkspace to activate Logic Pro with multiple attempts
-        for attempt in 1...3 {
-            let runningApps = NSWorkspace.shared.runningApplications
-            if let logicApp = runningApps.first(where: { $0.bundleIdentifier == logicBundleID }) {
-                logicApp.activate(options: .activateIgnoringOtherApps)
-                log("Logic Pro activation requested (attempt \(attempt))")
-            }
-            
-            // Wait between attempts
-            if attempt < 3 {
-                try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
-            }
-        }
+        // Method 1: Use NSWorkspace activation (primary method)
+        await activateWithNSWorkspace()
+        
+        // Method 2: Use System Events for additional reliability
+        await activateWithSystemEvents()
+        
+        // Method 3: Use Accessibility API as fallback
+        await activateWithAccessibilityAPI()
         
         // Wait for the activation to take effect
-        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        try await Task.sleep(nanoseconds: 800_000_000) // 0.8 seconds
         
-        // Additional wait to ensure UI is ready
-        try await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+        // Verify activation was successful
+        await verifyActivation()
         
         await MainActor.run {
             currentStatus = "Logic Pro activated"
         }
         
-        log("Logic Pro activation completed")
+        log("Logic Pro activation completed using enhanced methods")
+    }
+    
+    /// Activate Logic Pro using NSWorkspace
+    private func activateWithNSWorkspace() async {
+        log("Attempting activation with NSWorkspace...")
+        
+        for attempt in 1...3 {
+            let runningApps = NSWorkspace.shared.runningApplications
+            if let logicApp = runningApps.first(where: { $0.bundleIdentifier == logicBundleID }) {
+                logicApp.activate(options: .activateIgnoringOtherApps)
+                log("NSWorkspace activation requested (attempt \(attempt))")
+            }
+            
+            if attempt < 3 {
+                try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+            }
+        }
+    }
+    
+    /// Activate Logic Pro using System Events
+    private func activateWithSystemEvents() async {
+        log("Attempting activation with System Events...")
+        
+        // Enhanced AppleScript with multiple activation methods
+        let script = """
+        tell application "System Events"
+            try
+                -- Method 1: Direct activation
+                tell application "Logic Pro" to activate
+                
+                -- Method 2: Process-based activation
+                set logicProcess to first process whose name is "Logic Pro"
+                set frontmost of logicProcess to true
+                
+                -- Method 3: Window-based activation
+                set logicWindows to windows of logicProcess
+                if (count of logicWindows) > 0 then
+                    set frontmost of logicProcess to true
+                    delay 0.1
+                end if
+                
+                return true
+            on error errMsg
+                log "System Events activation error: " & errMsg
+                return false
+            end try
+        end tell
+        """
+        
+        do {
+            let appleScript = NSAppleScript(source: script)
+            var error: NSDictionary?
+            let result = appleScript?.executeAndReturnError(&error)
+            
+            if let error = error {
+                log("System Events activation failed: \(error)")
+            } else {
+                let success = result?.booleanValue ?? false
+                if success {
+                    log("System Events activation successful")
+                } else {
+                    log("System Events activation returned false")
+                }
+            }
+        } catch {
+            log("System Events activation error: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Activate Logic Pro using Accessibility API as fallback
+    private func activateWithAccessibilityAPI() async {
+        log("Attempting activation with Accessibility API...")
+        
+        guard let logicApp = logicApp else {
+            log("No Logic Pro app reference available for Accessibility API activation")
+            return
+        }
+        
+        // Use Accessibility API to bring window to front
+        let value = kCFBooleanTrue as CFTypeRef
+        let result = AXUIElementSetAttributeValue(logicApp, kAXMainWindowAttribute as CFString, value)
+        
+        if result == .success {
+            log("Accessibility API activation successful")
+        } else {
+            log("Accessibility API activation failed with error: \(result)")
+        }
+    }
+    
+    /// Verify that Logic Pro is actually activated
+    private func verifyActivation() async {
+        log("Verifying Logic Pro activation...")
+        
+        // Check if Logic Pro is frontmost using System Events
+        let verificationScript = """
+        tell application "System Events"
+            try
+                set frontmostApp to name of first application process whose frontmost is true
+                return frontmostApp is "Logic Pro"
+            on error
+                return false
+            end try
+        end tell
+        """
+        
+        do {
+            let appleScript = NSAppleScript(source: verificationScript)
+            var error: NSDictionary?
+            let result = appleScript?.executeAndReturnError(&error)
+            
+            if let error = error {
+                log("Activation verification failed: \(error)")
+            } else {
+                let isFrontmost = result?.booleanValue ?? false
+                if isFrontmost {
+                    log("✅ Logic Pro activation verified - app is frontmost")
+                } else {
+                    log("⚠️ Logic Pro activation verification failed - app is not frontmost")
+                    // Try one more activation attempt
+                    await activateWithSystemEvents()
+                }
+            }
+        } catch {
+            log("Activation verification error: \(error.localizedDescription)")
+        }
     }
     
     // MARK: - Project Operations
