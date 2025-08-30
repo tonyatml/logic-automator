@@ -1,14 +1,22 @@
 import SwiftUI
 import Foundation
 
+/// Main content view for the Logic Maestro application
+/// Provides a user interface for controlling Logic Pro automation
 struct ContentView: View {
+    // MARK: - State Properties
+    
+    /// Observable object that handles Logic Pro automation logic
     @StateObject private var automator = DanceGoAutomator()
-    @State private var projectName = ""
+    
+    /// Text input for user commands
     @State private var commandText = ""
     
     var body: some View {
         VStack {
-            // Title
+            // MARK: - Header Section
+            
+            // Title bar with logo and app name
             HStack {
                 Image("logo")
                     .padding(.vertical)
@@ -19,22 +27,31 @@ struct ContentView: View {
                 
                 Spacer()
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 12)
             
-            // Status indicator
+            // MARK: - Status Section
+            
+            // Status indicator showing connection and permission status
             StatusView(danceAutomator: automator)
                 .padding(.top, -20)
             
-            // Command input area
+            // MARK: - Command Input Section
+            
+            // Command input area with text editor and send button
             HStack (alignment: .center) {
+                // Text input field for user commands
                 TextEditor(text: $commandText)
                     .frame(height: 40)
+                    .padding(.horizontal, 6)  // Internal padding for text positioning
+                    .padding(.vertical, 6)    // Internal padding for text positioning
                     .overlay(
+                        // Border around the text editor
                         RoundedRectangle(cornerRadius: 8)
                             .stroke(Color.gray, lineWidth: 1)
                     )
-                    .padding(.leading,20)
+                    .padding(.leading,16)     // External padding for layout
                 
+                // Send button to execute the command
                 Button(action: sendCommand) {
                     HStack {
                         Text("Send")
@@ -46,27 +63,42 @@ struct ContentView: View {
                     .background(Color.blue)
                     .cornerRadius(6)
                 }
-                .disabled(commandText.isEmpty)
+                .disabled(commandText.isEmpty)  // Disable when no text entered
                 .buttonStyle(PlainButtonStyle())
                 .padding(.trailing,6)
             }
             
-            ScrollView {
-                Text(automator.outputLog.isEmpty ? "No output yet..." : automator.outputLog)
-                    .font(.system(.caption2, design: .monospaced))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(8)
-                    .cornerRadius(6)
-                    .textSelection(.enabled)
-                
+            // MARK: - Output Log Section
+            
+            // Scrollable area to display automation output
+            ScrollViewReader { proxy in
+                ScrollView {
+                    Text(automator.outputLog.isEmpty ? "No output yet..." : automator.outputLog)
+                        .font(.system(.caption2, design: .monospaced))  // Monospace font for log readability
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(8)
+                        .cornerRadius(6)
+                        .textSelection(.enabled)  // Allow text selection for copying
+                        .id("outputLog")  // ID for scrolling to this view
+                }
+                .frame(maxHeight: .infinity)  // Take remaining vertical space
+                .padding(.horizontal, 12)
+                .scrollIndicators(.visible, axes: .vertical)  // Show vertical scroll indicators
+                .onChange(of: automator.outputLog) { _ in
+                    // Auto-scroll to bottom when log content changes
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        proxy.scrollTo("outputLog", anchor: .bottom)
+                    }
+                }
             }
-            .frame(maxHeight: .infinity)
-            .padding(.horizontal, 16)
             
             Spacer()
             
-            // bottom buttons
+            // MARK: - Control Buttons Section
+            
+            // Bottom control buttons for various functions
             HStack {
+                // Clear log button
                 Button(action: clearOutput) {
                     HStack {
                         Text("Clear Log")
@@ -80,9 +112,10 @@ struct ContentView: View {
                             .stroke(Color.gray, lineWidth: 1)
                     )
                 }
-                .disabled(automator.outputLog.isEmpty)
+                .disabled(automator.outputLog.isEmpty)  // Disable when log is empty
                 .buttonStyle(PlainButtonStyle())
                 
+                // Settings button (currently uses clearOutput action as placeholder)
                 Button(action: clearOutput) {
                     HStack {
                         Text("Settings")
@@ -96,9 +129,9 @@ struct ContentView: View {
                             .stroke(Color.gray, lineWidth: 1)
                     )
                 }
-                .disabled(automator.outputLog.isEmpty)
                 .buttonStyle(PlainButtonStyle())
                 
+                // Help button (currently uses clearOutput action as placeholder)
                 Button(action: clearOutput) {
                     HStack {
                         Text("Help")
@@ -112,21 +145,27 @@ struct ContentView: View {
                             .stroke(Color.gray, lineWidth: 1)
                     )
                 }
-                .disabled(automator.outputLog.isEmpty)
                 .buttonStyle(PlainButtonStyle())
             }
             .padding()
         }
-        .frame(width: 300, height: 500)
-        .background(.black)
-        .foregroundColor(.white)
+        // MARK: - View Configuration
+        
+        .frame(width: 300, height: 500)  // Fixed window size
+        .background(.black)              // Dark theme background
+        .foregroundColor(.white)         // Light text for dark theme
         
     }
     
+    // MARK: - Action Methods
+    
+    /// Clears the output log
     private func clearOutput() {
         automator.clearLog()
     }
 
+    /// Sends the current command text to the automator
+    /// Clears the input field after sending
     private func sendCommand() {
         Task {
             await automator.processCommand(commandText)
@@ -135,14 +174,19 @@ struct ContentView: View {
     }
 }
 
-// MARK: - Status View
+// MARK: - Status View Component
+
+/// Displays the current status of Logic Pro connection and permissions
 struct StatusView: View {
+    /// Reference to the main automator object for status monitoring
     @ObservedObject var danceAutomator: DanceGoAutomator
     
     var body: some View {
         VStack {
             HStack {
-                // Connection status
+                // MARK: - Connection Status Indicator
+                
+                // Logic Pro connection status with colored indicator
                 HStack {
                     Circle()
                         .fill(danceAutomator.isLogicProRunning ? Color.green : Color.red)
@@ -152,7 +196,9 @@ struct StatusView: View {
                         .font(.caption)
                 }
                 
-                // Permission status
+                // MARK: - Permission Status Indicator
+                
+                // Permission status with colored indicator
                 HStack {
                     Circle()
                         .fill(danceAutomator.hasPermissions ? Color.green : Color.orange)
@@ -165,10 +211,13 @@ struct StatusView: View {
                 Spacer()
             }
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 16)
     }
 }
 
+// MARK: - Preview
+
+/// SwiftUI preview for development and testing
 #Preview {
     ContentView()
 }
