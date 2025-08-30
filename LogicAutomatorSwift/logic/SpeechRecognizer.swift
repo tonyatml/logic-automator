@@ -8,7 +8,7 @@ class SpeechRecognizer: NSObject, ObservableObject {
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
-    private let audioEngine = AVAudioEngine()
+    private var audioEngine = AVAudioEngine()
     
     @Published var isRecording = false
     @Published var recognizedText = ""
@@ -57,19 +57,11 @@ class SpeechRecognizer: NSObject, ObservableObject {
     func startRecording() async {
         print("SpeechRecognizer: Starting recording...")
         
-        // Reset audio engine to avoid format mismatch issues
-        if audioEngine.isRunning {
-            audioEngine.stop()
-            print("SpeechRecognizer: Stopped existing audio engine")
-        }
+        // Create a fresh audio engine to avoid format mismatch issues
+        audioEngine = AVAudioEngine()
+        print("SpeechRecognizer: Created fresh audio engine")
         
-        // Remove any existing tap
-        if audioEngine.inputNode.numberOfInputs > 0 {
-            audioEngine.inputNode.removeTap(onBus: 0)
-            print("SpeechRecognizer: Removed existing audio tap")
-        }
-        
-        // Add a small delay to ensure audio engine is fully reset
+        // Add a small delay to ensure audio engine is fully initialized
         do {
             try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
         } catch {
@@ -263,16 +255,19 @@ class SpeechRecognizer: NSObject, ObservableObject {
         
         // Configure audio input with error handling
         let inputNode = audioEngine.inputNode
-        let recordingFormat = inputNode.outputFormat(forBus: 0)
         
-        print("SpeechRecognizer: Audio format - sample rate: \(recordingFormat.sampleRate), channels: \(recordingFormat.channelCount)")
+        // Get the current format and ensure it's compatible
+        let currentFormat = inputNode.outputFormat(forBus: 0)
+        print("SpeechRecognizer: Current audio format - sample rate: \(currentFormat.sampleRate), channels: \(currentFormat.channelCount)")
         
-        // Use the native format from the input node to avoid format mismatch
-        let nativeFormat = inputNode.outputFormat(forBus: 0)
-        print("SpeechRecognizer: Using native format - sample rate: \(nativeFormat.sampleRate), channels: \(nativeFormat.channelCount)")
+        // Use a standard format that's more likely to be compatible
+        let standardFormat = AVAudioFormat(standardFormatWithSampleRate: currentFormat.sampleRate, channels: 1)
+        let recordingFormat = standardFormat ?? currentFormat
         
-        // Install tap with the native format
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: nativeFormat) { buffer, _ in
+        print("SpeechRecognizer: Using recording format - sample rate: \(recordingFormat.sampleRate), channels: \(recordingFormat.channelCount)")
+        
+        // Install tap with the recording format
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
             recognitionRequest.append(buffer)
         }
         print("SpeechRecognizer: Audio tap installed successfully")
@@ -363,6 +358,9 @@ class SpeechRecognizer: NSObject, ObservableObject {
         // Clean up references
         recognitionRequest = nil
         recognitionTask = nil
+        
+        // Reset audio engine to nil to force fresh creation next time
+        audioEngine = AVAudioEngine()
         
         print("SpeechRecognizer: Recording stopped successfully")
         
