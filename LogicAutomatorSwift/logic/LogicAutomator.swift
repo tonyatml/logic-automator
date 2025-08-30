@@ -109,14 +109,24 @@ class LogicAutomator: ObservableObject {
         """
         
         do {
-            let appleScript = NSAppleScript(source: script)
-            var error: NSDictionary?
-            appleScript?.executeAndReturnError(&error)
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+            process.arguments = ["-e", script]
             
-            if let error = error {
-                log("System Events launch failed: \(error)")
+            let pipe = Pipe()
+            process.standardOutput = pipe
+            process.standardError = pipe
+            
+            try process.run()
+            process.waitUntilExit()
+            
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            
+            if process.terminationStatus == 0 {
+                log("System Events launch successful: \(output)")
             } else {
-                log("System Events launch successful")
+                log("System Events launch failed with status \(process.terminationStatus): \(output)")
             }
         } catch {
             log("System Events launch error: \(error.localizedDescription)")
@@ -159,16 +169,16 @@ class LogicAutomator: ObservableObject {
         await activateWithNSWorkspace()
         
         // Method 2: Use System Events for additional reliability
-        await activateWithSystemEvents()
+        // await activateWithSystemEvents()
         
         // Method 3: Use Accessibility API as fallback
-        await activateWithAccessibilityAPI()
+        // await activateWithAccessibilityAPI()
         
         // Wait for the activation to take effect
         try await Task.sleep(nanoseconds: 800_000_000) // 0.8 seconds
         
         // Verify activation was successful
-        await verifyActivation()
+        // await verifyActivation()
         
         await MainActor.run {
             currentStatus = "Logic Pro activated"
@@ -200,44 +210,28 @@ class LogicAutomator: ObservableObject {
         
         // Enhanced AppleScript with multiple activation methods
         let script = """
-        tell application "System Events"
-            try
-                -- Method 1: Direct activation
-                tell application "Logic Pro" to activate
-                
-                -- Method 2: Process-based activation
-                set logicProcess to first process whose name is "Logic Pro"
-                set frontmost of logicProcess to true
-                
-                -- Method 3: Window-based activation
-                set logicWindows to windows of logicProcess
-                if (count of logicWindows) > 0 then
-                    set frontmost of logicProcess to true
-                    delay 0.1
-                end if
-                
-                return true
-            on error errMsg
-                log "System Events activation error: " & errMsg
-                return false
-            end try
-        end tell
+        tell application "Logic Pro" to activate
         """
         
         do {
-            let appleScript = NSAppleScript(source: script)
-            var error: NSDictionary?
-            let result = appleScript?.executeAndReturnError(&error)
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+            process.arguments = ["-e", script]
             
-            if let error = error {
-                log("System Events activation failed: \(error)")
+            let pipe = Pipe()
+            process.standardOutput = pipe
+            process.standardError = pipe
+            
+            try process.run()
+            process.waitUntilExit()
+            
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            
+            if process.terminationStatus == 0 {
+                log("System Events activation successful: \(output)")
             } else {
-                let success = result?.booleanValue ?? false
-                if success {
-                    log("System Events activation successful")
-                } else {
-                    log("System Events activation returned false")
-                }
+                log("System Events activation failed with status \(process.terminationStatus): \(output)")
             }
         } catch {
             log("System Events activation error: \(error.localizedDescription)")
@@ -281,14 +275,23 @@ class LogicAutomator: ObservableObject {
         """
         
         do {
-            let appleScript = NSAppleScript(source: verificationScript)
-            var error: NSDictionary?
-            let result = appleScript?.executeAndReturnError(&error)
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+            process.arguments = ["-e", verificationScript]
             
-            if let error = error {
-                log("Activation verification failed: \(error)")
-            } else {
-                let isFrontmost = result?.booleanValue ?? false
+            let pipe = Pipe()
+            process.standardOutput = pipe
+            process.standardError = pipe
+            
+            try process.run()
+            process.waitUntilExit()
+            
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            
+            if process.terminationStatus == 0 {
+                // Parse the output to check if Logic Pro is frontmost
+                let isFrontmost = output.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "true"
                 if isFrontmost {
                     log("✅ Logic Pro activation verified - app is frontmost")
                 } else {
@@ -296,6 +299,8 @@ class LogicAutomator: ObservableObject {
                     // Try one more activation attempt
                     await activateWithSystemEvents()
                 }
+            } else {
+                log("Activation verification failed with status \(process.terminationStatus): \(output)")
             }
         } catch {
             log("Activation verification error: \(error.localizedDescription)")

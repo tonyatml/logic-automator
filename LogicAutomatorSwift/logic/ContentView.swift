@@ -15,6 +15,21 @@ struct ContentView: View {
     /// Text input for user commands
     @State private var commandText = ""
     
+    @State private var textFocused = false
+    
+    var inputTxtview: some View {
+        TextEditor(text: $commandText)
+            .frame(height: 40)
+            .padding(.horizontal, 6)  // Internal padding for text positioning
+            .padding(.vertical, 6)    // Internal padding for text positioning
+            .overlay(
+                // Border around the text editor
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.gray, lineWidth: 1)
+            )
+            .padding(.leading,16)     // External padding for layout
+    }
+    
     var body: some View {
         VStack {
             // MARK: - Header Section
@@ -45,16 +60,7 @@ struct ContentView: View {
                 
                 HStack (alignment: .center) {
                     // Text input field for user commands
-                    TextEditor(text: $commandText)
-                        .frame(height: 40)
-                        .padding(.horizontal, 6)  // Internal padding for text positioning
-                        .padding(.vertical, 6)    // Internal padding for text positioning
-                        .overlay(
-                            // Border around the text editor
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color.gray, lineWidth: 1)
-                        )
-                        .padding(.leading,16)     // External padding for layout
+                    inputTxtview
                     
                     // Microphone button for voice input
                     Button(action: toggleVoiceRecording) {
@@ -258,6 +264,7 @@ struct ContentView: View {
     /// Sends the current command text to the automator
     /// Clears the input field after sending
     private func sendCommand() {
+        NSApplication.shared.deactivate()
         Task {
             await automator.processCommand(commandText)
             commandText = "" // Clear the command after sending
