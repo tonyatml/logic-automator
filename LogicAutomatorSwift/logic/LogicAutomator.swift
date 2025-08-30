@@ -169,10 +169,10 @@ class LogicAutomator: ObservableObject {
         await activateWithNSWorkspace()
         
         // Method 2: Use System Events for additional reliability
-        // await activateWithSystemEvents()
+        await activateWithSystemEvents()
         
         // Method 3: Use Accessibility API as fallback
-        // await activateWithAccessibilityAPI()
+        await activateWithAccessibilityAPI()
         
         // Wait for the activation to take effect
         try await Task.sleep(nanoseconds: 800_000_000) // 0.8 seconds
@@ -191,16 +191,10 @@ class LogicAutomator: ObservableObject {
     private func activateWithNSWorkspace() async {
         log("Attempting activation with NSWorkspace...")
         
-        for attempt in 1...3 {
-            let runningApps = NSWorkspace.shared.runningApplications
-            if let logicApp = runningApps.first(where: { $0.bundleIdentifier == logicBundleID }) {
-                logicApp.activate(options: .activateIgnoringOtherApps)
-                log("NSWorkspace activation requested (attempt \(attempt))")
-            }
-            
-            if attempt < 3 {
-                try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
-            }
+        let runningApps = NSWorkspace.shared.runningApplications
+        if let logicApp = runningApps.first(where: { $0.bundleIdentifier == logicBundleID }) {
+            logicApp.activate()
+            log("NSWorkspace activation requested )")
         }
     }
     

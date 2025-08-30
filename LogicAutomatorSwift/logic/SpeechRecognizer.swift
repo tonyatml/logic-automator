@@ -244,11 +244,21 @@ class SpeechRecognizer: NSObject, ObservableObject {
                         // Only process text that's longer than what we started with
                         // This helps avoid processing accumulated text from previous sessions
                         if transcription.count > self.recognizedText.count || self.recognizedText.isEmpty {
+                            // Calculate the new text (increment)
+                            let newText: String
+                            if self.recognizedText.isEmpty {
+                                newText = transcription
+                            } else {
+                                // Get only the new part that was added
+                                let startIndex = transcription.index(transcription.startIndex, offsetBy: self.recognizedText.count)
+                                newText = String(transcription[startIndex...])
+                            }
+                            
                             self.recognizedText = transcription
                             
-                            // Send the current transcription
-                            print("SpeechRecognizer: Sending current text: '\(transcription)'")
-                            self.onFinalResult?(transcription)
+                            // Send only the new text (increment)
+                            print("SpeechRecognizer: Sending new text increment: '\(newText)'")
+                            self.onFinalResult?(newText)
                         }
                         
                         // If this is the final result, we can stop recording
