@@ -99,15 +99,25 @@ class LogicAutomator: ObservableObject {
         
         log("Activating Logic Pro...")
         
-        // Use NSWorkspace to activate Logic Pro
-        let runningApps = NSWorkspace.shared.runningApplications
-        if let logicApp = runningApps.first(where: { $0.bundleIdentifier == logicBundleID }) {
-            logicApp.activate(options: .activateIgnoringOtherApps)
-            log("Logic Pro activation requested")
+        // Use NSWorkspace to activate Logic Pro with multiple attempts
+        for attempt in 1...3 {
+            let runningApps = NSWorkspace.shared.runningApplications
+            if let logicApp = runningApps.first(where: { $0.bundleIdentifier == logicBundleID }) {
+                logicApp.activate(options: .activateIgnoringOtherApps)
+                log("Logic Pro activation requested (attempt \(attempt))")
+            }
+            
+            // Wait between attempts
+            if attempt < 3 {
+                try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+            }
         }
         
-        // Wait a bit for the activation to take effect
-        try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+        // Wait for the activation to take effect
+        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        
+        // Additional wait to ensure UI is ready
+        try await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
         
         await MainActor.run {
             currentStatus = "Logic Pro activated"
@@ -650,17 +660,21 @@ class LogicAutomator: ObservableObject {
             currentStatus = "Starting playback..."
         }
         
+        // Ensure Logic Pro is active and ready
         try await activateLogic()
         log("Starting playback...")
-        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
         
+        // Wait for Logic Pro to be ready
+        try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+        
+        // Send space key to start playback
+        log("Sending space key to start playback...")
+        try await sendKeys(" ")
+        
+        log("Space key sent successfully")
         await MainActor.run {
             currentStatus = "Playback started"
         }
-        
-        log("Sending space key to start playback...")
-        try await sendKeys(" ")
-        log("Space key sent successfully")
     }
     
     /// Stop playback
@@ -673,14 +687,18 @@ class LogicAutomator: ObservableObject {
             currentStatus = "Stopping playback..."
         }
         
+        // Ensure Logic Pro is active and ready
         try await activateLogic()
         log("Stopping playback...")
-        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
         
+        // Wait for Logic Pro to be ready
+        try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+        
+        // Send space key to stop playback
         log("Sending space key to stop playback...")
         try await sendKeys(" ")
-        log("Space key sent successfully")
         
+        log("Space key sent successfully")
         await MainActor.run {
             currentStatus = "Playback stopped"
         }
@@ -753,15 +771,15 @@ class LogicAutomator: ObservableObject {
                 let keyDownEvent = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true)
                 keyDownEvent?.post(tap: .cghidEventTap)
                 
-                // Small delay
-                try await Task.sleep(nanoseconds: 50_000_000) // 0.05 seconds
+                // Delay for key down
+                try await Task.sleep(nanoseconds: 60_000_000) // 0.06 seconds
                 
                 // Key up
                 let keyUpEvent = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: false)
                 keyUpEvent?.post(tap: .cghidEventTap)
                 
-                // Small delay between characters
-                try await Task.sleep(nanoseconds: 50_000_000) // 0.05 seconds
+                // Delay between characters
+                try await Task.sleep(nanoseconds: 60_000_000) // 0.06 seconds
             }
         }
     }
