@@ -1,20 +1,21 @@
-# Logic Automator Swift
+# Logic Maestro
 
-A modern Swift-based automation tool for Logic Pro X with a beautiful graphical interface.
+A modern Swift-based automation tool for Logic Pro X with voice commands and a beautiful graphical interface.
 
 ## 🎯 Project Overview
 
-This project is a complete rewrite of the original Python-based Logic Pro automation tool, now using native Swift and Accessibility API for direct macOS integration. It provides a modern, user-friendly graphical interface for automating Logic Pro X workflows.
+This project is a complete rewrite of the original Python-based Logic Pro automation tool, now using native Swift and Accessibility API for direct macOS integration. It provides a modern, user-friendly graphical interface with voice command support for automating Logic Pro X workflows.
 
 ### Key Features
 
 - **Native Swift Implementation**: Direct use of Accessibility API, no Python dependencies
-- **Modern SwiftUI Interface**: Beautiful, responsive graphical user interface
+- **Modern SwiftUI Interface**: Beautiful, responsive graphical user interface with dark theme
+- **Voice Command Support**: Speech recognition for hands-free Logic Pro control
 - **Real-time Status Updates**: Live progress tracking and status indicators
-- **Preset Configurations**: Quick setup for common dance music genres
-- **MIDI File Support**: Optional MIDI file import functionality
-- **Permission Management**: Automatic Accessibility permission checking
+- **Natural Language Commands**: Process commands in plain English
+- **Permission Management**: Automatic Accessibility and microphone permission checking
 - **Error Handling**: Comprehensive error handling with user-friendly messages
+- **Command History**: Built-in logging and command history
 
 ## 🏗️ Project Structure
 
@@ -23,26 +24,24 @@ LogicAutomatorSwift/
 ├── logic.xcodeproj/              # Xcode project configuration
 ├── logic/                        # Main application source
 │   ├── logicApp.swift           # App entry point
-│   ├── ContentView.swift        # Main UI interface
+│   ├── ContentView.swift        # Main UI interface with voice commands
 │   ├── LogicAutomator.swift     # Core automation engine
+│   ├── CommandAutomator.swift   # High-level command processing
+│   ├── SpeechRecognizer.swift   # Voice command recognition
 │   ├── LogicError.swift         # Error handling
-│   ├── DanceGoAutomator.swift   # High-level automation interface
 │   ├── Assets.xcassets/         # App icons and assets
-│   └── logic.entitlements       # App permissions
-├── python resources/             # Legacy Python resources (for reference)
-│   ├── dance_go_automator.py    # Original Python script
-│   ├── logic.py                 # Original Python module
-│   ├── templates/               # Logic Pro templates
-│   └── test.midi               # Test MIDI file
+│   ├── logic.entitlements       # App permissions
+│   └── templates/               # Logic Pro templates
 └── README.md                    # This file
 ```
 
 ### Core Components
 
 1. **LogicAutomator**: Low-level Accessibility API wrapper for Logic Pro control
-2. **DanceGoAutomator**: High-level automation interface for dance project creation
-3. **ContentView**: Modern SwiftUI interface with real-time status updates
-4. **LogicError**: Comprehensive error handling system
+2. **CommandAutomator**: High-level command processing and automation interface
+3. **SpeechRecognizer**: Voice command recognition and processing
+4. **ContentView**: Modern SwiftUI interface with voice input and real-time status
+5. **LogicError**: Comprehensive error handling system
 
 ## 🚀 Quick Start
 
@@ -51,6 +50,7 @@ LogicAutomatorSwift/
 - macOS 14.0+
 - Xcode 15.0+
 - Logic Pro X (for full functionality)
+- Microphone (for voice commands)
 
 ### Installation Steps
 
@@ -78,42 +78,67 @@ LogicAutomatorSwift/
 
 1. **Accessibility Permissions**
    - System Preferences > Security & Privacy > Privacy > Accessibility
-   - Add Logic Automator application
+   - Add Logic Maestro application
 
-2. **Automation Permissions**
-   - System Preferences > Security & Privacy > Privacy > Automation
-   - Ensure Logic Automator can control Logic Pro X
+2. **Microphone Permissions**
+   - System Preferences > Security & Privacy > Privacy > Microphone
+   - Add Logic Maestro application
+
+3. **Speech Recognition Permissions**
+   - System Preferences > Security & Privacy > Privacy > Speech Recognition
+   - Add Logic Maestro application
 
 ## 📖 Usage Guide
 
 ### Basic Usage
 
 1. **Launch the app**: The app will automatically check permissions and Logic Pro status
-2. **Enter project details**: 
-   - Project name
-   - Tempo (BPM) - adjustable with slider
-   - Key signature - select from dropdown
-   - MIDI file (optional) - browse and select
-3. **Use presets**: Click on genre presets for quick setup
-4. **Create project**: Click "Create Dance Project" to start automation
+2. **Enter commands**: 
+   - Type commands in the text field, or
+   - Use voice commands by clicking the microphone button
+3. **Send commands**: Click "Send" or press Enter to execute commands
+4. **Monitor status**: Watch the real-time status indicators and progress
+
+### Voice Commands
+
+The app supports voice commands for hands-free operation:
+
+- **"Open Logic Pro"** - Launches Logic Pro X
+- **"Create new project"** - Creates a new Logic Pro project
+- **"Navigate to tracks"** - Opens the tracks view
+- **"Select track 1"** - Selects the first track
+- **"Set tempo 120"** - Sets the project tempo to 120 BPM
+- **"Import MIDI file"** - Opens MIDI import dialog
+- **"Play"** - Starts playback
+- **"Stop"** - Stops playback
+
+### Text Commands
+
+You can also type commands directly:
+
+- `open logic pro`
+- `create new project`
+- `navigate to tracks`
+- `select track 1`
+- `set tempo 120`
+- `set key C major`
+- `import midi file`
+- `new track`
+- `replace region`
+- `play`
+- `stop`
+- `help`
 
 ### Features
 
+- ✅ **Voice Commands**: Speech recognition for hands-free operation
 - ✅ **Real-time Status**: Live progress tracking and status updates
-- ✅ **Permission Checking**: Automatic Accessibility permission verification
+- ✅ **Permission Checking**: Automatic Accessibility and microphone permission verification
 - ✅ **Logic Pro Detection**: Automatic detection of Logic Pro running status
-- ✅ **Project Configuration**: Comprehensive project setup options
-- ✅ **Preset Templates**: Quick setup for House, Techno, Trance, Dubstep
-- ✅ **MIDI Import**: Optional MIDI file import functionality
+- ✅ **Natural Language**: Process commands in plain English
+- ✅ **Command History**: Built-in logging and command history
 - ✅ **Error Handling**: User-friendly error messages and recovery suggestions
-
-### Preset Configurations
-
-- **House**: 128 BPM, A minor
-- **Techno**: 130 BPM, D minor  
-- **Trance**: 138 BPM, E major
-- **Dubstep**: 140 BPM, F minor
-- **EDM**: 128 BPM, C major
+- ✅ **Dark Theme**: Modern dark interface design
 
 ## 🔧 Technical Implementation
 
@@ -137,15 +162,50 @@ private func setupLogicApp() {
 }
 ```
 
+### Speech Recognition
+
+Voice command processing using Speech framework:
+
+```swift
+class SpeechRecognizer: NSObject, ObservableObject {
+    private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
+    private var audioEngine = AVAudioEngine()
+    
+    @Published var isRecording = false
+    @Published var recognizedText = ""
+    @Published var isAuthorized = false
+}
+```
+
 ### SwiftUI Interface
 
 Modern, responsive interface with real-time updates:
 
 ```swift
-@StateObject private var danceAutomator = DanceGoAutomator()
+@StateObject private var automator = CommandAutomator()
+@StateObject private var speechRecognizer = SpeechRecognizer()
 @Published var isWorking = false
 @Published var currentStep = ""
 @Published var progress: Double = 0.0
+```
+
+### Command Processing
+
+Natural language command processing:
+
+```swift
+func processCommand(_ command: String) async {
+    let lowerCommand = command.lowercased()
+    
+    if lowerCommand.contains("open") {
+        try await handleOpenCommand(command)
+    } else if lowerCommand.contains("create") {
+        try await handleCreateCommand(command)
+    } else if lowerCommand.contains("navigate") {
+        try await handleNavigationCommand(command)
+    }
+    // ... more command handlers
+}
 ```
 
 ### Error Handling
@@ -158,6 +218,7 @@ enum LogicError: Error, LocalizedError {
     case accessibilityNotEnabled
     case timeout(String)
     case elementNotFound(String)
+    case speechRecognitionFailed(String)
     // ... more error cases
 }
 ```
@@ -166,21 +227,24 @@ enum LogicError: Error, LocalizedError {
 
 | Feature | Python Version | Swift Version |
 |---------|----------------|---------------|
-| Interface | Command line | Graphical UI |
+| Interface | Command line | Graphical UI with voice |
 | Performance | Medium | Excellent |
 | Dependencies | Python + automacos | No external dependencies |
 | Build System | Manual | Xcode project |
 | Error Handling | Basic | Comprehensive |
 | Permission Management | Manual | Automatic detection |
 | Real-time Updates | No | Yes |
+| Voice Commands | No | Yes |
 | User Experience | Technical | User-friendly |
+| Command Processing | Fixed commands | Natural language |
 
 ## 🧪 Testing
 
 The app includes comprehensive testing and validation:
 
-- **Permission Testing**: Automatic Accessibility permission verification
+- **Permission Testing**: Automatic Accessibility and microphone permission verification
 - **Logic Pro Detection**: Real-time Logic Pro status monitoring
+- **Speech Recognition**: Voice command processing and validation
 - **Error Handling**: Comprehensive error scenarios
 - **UI Testing**: SwiftUI interface validation
 
@@ -194,13 +258,20 @@ The app includes comprehensive testing and validation:
 
 2. **Permission denied**
    - Check System Preferences > Security & Privacy > Privacy > Accessibility
-   - Re-grant Accessibility permissions
+   - Check System Preferences > Security & Privacy > Privacy > Microphone
+   - Check System Preferences > Security & Privacy > Privacy > Speech Recognition
+   - Re-grant permissions as needed
 
 3. **Logic Pro not detected**
    - Ensure Logic Pro X is installed
    - Check if Logic Pro is running
 
-4. **Build errors**
+4. **Voice commands not working**
+   - Ensure microphone permissions are granted
+   - Check speech recognition permissions
+   - Verify microphone is working in other apps
+
+5. **Build errors**
    - Ensure Xcode 15.0+ is installed
    - Check macOS version (14.0+ required)
 
@@ -236,7 +307,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- Thanks to Apple for providing the Accessibility API and SwiftUI
+- Thanks to Apple for providing the Accessibility API, Speech framework, and SwiftUI
 - Thanks to the Logic Pro X team
 - Thanks to all contributors and test users
 
@@ -246,22 +317,26 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - ✅ Core functionality implemented
 - ✅ SwiftUI interface completed
+- ✅ Voice command support
 - ✅ Accessibility API integration
+- ✅ Speech recognition
 - ✅ Error handling system
 - ✅ Real-time status updates
-- ✅ Preset configurations
-- ✅ MIDI file support
+- ✅ Natural language command processing
 - ✅ Permission management
+- ✅ Dark theme interface
 
 ---
 
-**Note**: This is a production-ready application. The Swift implementation provides a much better user experience compared to the original Python version, with native macOS integration and a modern graphical interface.
+**Note**: This is a production-ready application. The Swift implementation provides a much better user experience compared to the original Python version, with native macOS integration, voice commands, and a modern graphical interface.
 
 ## 🎵 Next Steps
 
 Future enhancements could include:
 - Advanced Logic Pro automation features
-- Batch project creation
-- Custom template support
+- Custom voice command training
+- Batch command processing
 - Integration with other DAWs
 - Cloud project synchronization
+- Advanced speech recognition with context awareness
+- Plugin automation support
