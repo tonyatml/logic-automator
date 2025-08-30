@@ -222,12 +222,13 @@ struct ContentView: View {
         .frame(width: 300, height: 500)  // Fixed window size
         .background(.black)              // Dark theme background
         .foregroundColor(.white)         // Light text for dark theme
-        .onAppear {
-            // Set up speech recognition callback
-            speechRecognizer.onFinalResult = { text in
-                commandText = text
+                    .onAppear {
+                // Set up speech recognition callback
+                speechRecognizer.onFinalResult = { text in
+                    // Replace the text field content with the new recognition result
+                    commandText = text
+                }
             }
-        }
         
     }
     
@@ -252,6 +253,9 @@ struct ContentView: View {
         if speechRecognizer.isRecording {
             speechRecognizer.stopRecording()
         } else {
+            // Clear text field immediately when starting new recording
+            commandText = ""
+            
             // Check if we need to request permissions first
             if !speechRecognizer.isAuthorized {
                 Task {

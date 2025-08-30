@@ -6,28 +6,14 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-		2F5E6BA02E60213E00F2A4D4 /* dance_go_automator.py in Resources */ = {isa = PBXBuildFile; fileRef = 2F5E6B992E60213E00F2A4D4 /* dance_go_automator.py */; };
-		2F5E6BA22E6021A500F2A4D4 /* logic.py in Resources */ = {isa = PBXBuildFile; fileRef = 2F5E6BA12E6021A500F2A4D4 /* logic.py */; };
-		2F5E6BB32E602A0000F2A4D4 /* test.midi in Resources */ = {isa = PBXBuildFile; fileRef = 2F5E6BB22E602A0000F2A4D4 /* test.midi */; };
-/* End PBXBuildFile section */
-
 /* Begin PBXFileReference section */
 		2F11D93E2E5EF9E6004513B9 /* logic.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = logic.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		2F5E6B992E60213E00F2A4D4 /* dance_go_automator.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = dance_go_automator.py; sourceTree = "<group>"; };
-		2F5E6BA12E6021A500F2A4D4 /* logic.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = logic.py; sourceTree = "<group>"; };
-		2F5E6BB22E602A0000F2A4D4 /* test.midi */ = {isa = PBXFileReference; lastKnownFileType = audio.midi; path = test.midi; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		2F11D9402E5EF9E6004513B9 /* logic */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = logic;
-			sourceTree = "<group>";
-		};
-		2F5E6BA52E6021BA00F2A4D4 /* templates */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = templates;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -46,7 +32,6 @@
 		2F11D9352E5EF9E6004513B9 = {
 			isa = PBXGroup;
 			children = (
-				2F5E6BA32E6021B100F2A4D4 /* python resources */,
 				2F11D9402E5EF9E6004513B9 /* logic */,
 				2F11D93F2E5EF9E6004513B9 /* Products */,
 			);
@@ -58,17 +43,6 @@
 				2F11D93E2E5EF9E6004513B9 /* logic.app */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		2F5E6BA32E6021B100F2A4D4 /* python resources */ = {
-			isa = PBXGroup;
-			children = (
-				2F5E6BB22E602A0000F2A4D4 /* test.midi */,
-				2F5E6BA12E6021A500F2A4D4 /* logic.py */,
-				2F5E6B992E60213E00F2A4D4 /* dance_go_automator.py */,
-				2F5E6BA52E6021BA00F2A4D4 /* templates */,
-			);
-			path = "python resources";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -88,7 +62,6 @@
 			);
 			fileSystemSynchronizedGroups = (
 				2F11D9402E5EF9E6004513B9 /* logic */,
-				2F5E6BA52E6021BA00F2A4D4 /* templates */,
 			);
 			name = logic;
 			packageProductDependencies = (
@@ -136,9 +109,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2F5E6BA22E6021A500F2A4D4 /* logic.py in Resources */,
-				2F5E6BA02E60213E00F2A4D4 /* dance_go_automator.py in Resources */,
-				2F5E6BB32E602A0000F2A4D4 /* test.midi in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -289,8 +259,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "This app uses speech recognition to allow you to control Logic Pro with voice commands like 'play', 'stop', 'create project', etc.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app needs microphone access to capture your voice commands for controlling Logic Pro.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "This app uses speech recognition to allow you to control Logic Pro with voice commands like 'play', 'stop', 'create project', etc.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -319,8 +289,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "This app uses speech recognition to allow you to control Logic Pro with voice commands like 'play', 'stop', 'create project', etc.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app needs microphone access to capture your voice commands for controlling Logic Pro.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "This app uses speech recognition to allow you to control Logic Pro with voice commands like 'play', 'stop', 'create project', etc.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",

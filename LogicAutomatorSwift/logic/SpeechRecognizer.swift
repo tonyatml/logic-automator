@@ -19,6 +19,9 @@ class SpeechRecognizer: NSObject, ObservableObject {
     // Callback for when final result is received
     var onFinalResult: ((String) -> Void)?
     
+    // Track the last sent text to avoid duplicates
+    private var lastSentText = ""
+    
     override init() {
         super.init()
         requestAuthorization()
@@ -60,6 +63,15 @@ class SpeechRecognizer: NSObject, ObservableObject {
         // Create a fresh audio engine to avoid format mismatch issues
         audioEngine = AVAudioEngine()
         print("SpeechRecognizer: Created fresh audio engine")
+        
+        // Reset state for new recording session
+        lastSentText = ""
+        recognizedText = ""
+        
+        // Clear the text field immediately when starting new recording
+        DispatchQueue.main.async {
+            self.onFinalResult?("")
+        }
         
         // Add a small delay to ensure audio engine is fully initialized
         do {
@@ -229,10 +241,15 @@ class SpeechRecognizer: NSObject, ObservableObject {
                     print("SpeechRecognizer: Recognition result - text: '\(transcription)', isFinal: \(result.isFinal)")
                     
                     if !transcription.isEmpty {
-                        self.recognizedText = transcription
-                        
-                        // Call the callback immediately with the current result
-                        self.onFinalResult?(transcription)
+                        // Only process text that's longer than what we started with
+                        // This helps avoid processing accumulated text from previous sessions
+                        if transcription.count > self.recognizedText.count || self.recognizedText.isEmpty {
+                            self.recognizedText = transcription
+                            
+                            // Send the current transcription
+                            print("SpeechRecognizer: Sending current text: '\(transcription)'")
+                            self.onFinalResult?(transcription)
+                        }
                         
                         // If this is the final result, we can stop recording
                         if result.isFinal {
@@ -364,11 +381,9 @@ class SpeechRecognizer: NSObject, ObservableObject {
         
         print("SpeechRecognizer: Recording stopped successfully")
         
-        // If we have any recognized text, make sure it's sent to the callback
-        if !recognizedText.isEmpty {
-            print("SpeechRecognizer: Sending final recognized text: '\(recognizedText)'")
-            onFinalResult?(recognizedText)
-        }
+        // Reset tracking state for next recording session
+        lastSentText = ""
+        recognizedText = ""
     }
     
     /// Clear recognized text
@@ -377,6 +392,7 @@ class SpeechRecognizer: NSObject, ObservableObject {
             self.recognizedText = ""
             self.errorMessage = ""
             self.isFinalResult = false
+            self.lastSentText = ""
         }
     }
     
