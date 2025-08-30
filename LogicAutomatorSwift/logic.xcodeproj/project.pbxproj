@@ -289,6 +289,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "This app uses speech recognition to allow you to control Logic Pro with voice commands like 'play', 'stop', 'create project', etc.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app needs microphone access to capture your voice commands for controlling Logic Pro.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -317,6 +319,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "This app uses speech recognition to allow you to control Logic Pro with voice commands like 'play', 'stop', 'create project', etc.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app needs microphone access to capture your voice commands for controlling Logic Pro.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",

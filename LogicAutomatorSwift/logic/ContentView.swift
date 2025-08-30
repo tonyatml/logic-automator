@@ -9,6 +9,9 @@ struct ContentView: View {
     /// Observable object that handles Logic Pro automation logic
     @StateObject private var automator = CommandAutomator()
     
+    /// Speech recognition manager
+    @StateObject private var speechRecognizer = SpeechRecognizer()
+    
     /// Text input for user commands
     @State private var commandText = ""
     
@@ -37,35 +40,100 @@ struct ContentView: View {
             
             // MARK: - Command Input Section
             
-            // Command input area with text editor and send button
-            HStack (alignment: .center) {
-                // Text input field for user commands
-                TextEditor(text: $commandText)
-                    .frame(height: 40)
-                    .padding(.horizontal, 6)  // Internal padding for text positioning
-                    .padding(.vertical, 6)    // Internal padding for text positioning
-                    .overlay(
-                        // Border around the text editor
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.gray, lineWidth: 1)
-                    )
-                    .padding(.leading,16)     // External padding for layout
+            // Command input area with text editor, microphone, and send button
+            VStack(spacing: 8) {
                 
-                // Send button to execute the command
-                Button(action: sendCommand) {
-                    HStack {
-                        Text("Send")
-                            .font(.caption)
-                    }
-                    .frame(maxWidth: 80)
-                    .padding(.vertical, 6)
+                HStack (alignment: .center) {
+                    // Text input field for user commands
+                    TextEditor(text: $commandText)
+                        .frame(height: 40)
+                        .padding(.horizontal, 6)  // Internal padding for text positioning
+                        .padding(.vertical, 6)    // Internal padding for text positioning
+                        .overlay(
+                            // Border around the text editor
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.gray, lineWidth: 1)
+                        )
+                        .padding(.leading,16)     // External padding for layout
                     
-                    .background(Color.blue)
-                    .cornerRadius(6)
+                    // Microphone button for voice input
+                    Button(action: toggleVoiceRecording) {
+                        Image(systemName: speechRecognizer.isRecording ? "mic.fill" : "mic")
+                            .font(.system(size: 18))
+                            .foregroundColor(speechRecognizer.isRecording ? .red : .white)
+                            .frame(width: 36, height: 36)
+                            .background(
+                                Circle()
+                                    .fill(speechRecognizer.isRecording ? 
+                                          Color.red.opacity(0.3) : 
+                                          Color.gray.opacity(0.2))
+                                    .overlay(
+                                        Circle()
+                                            .stroke(speechRecognizer.isRecording ? 
+                                                   Color.red.opacity(0.6) : 
+                                                   Color.gray.opacity(0.4), 
+                                                   lineWidth: 1)
+                                    )
+                            )
+                            .scaleEffect(speechRecognizer.isRecording ? 1.1 : 1.0)
+                            .animation(.easeInOut(duration: 0.2), value: speechRecognizer.isRecording)
+                    }
+                    .disabled(!speechRecognizer.isAuthorized)
+                    .buttonStyle(PlainButtonStyle())
+                    .padding(.horizontal, 6)
+                    
+                    // Permission request button (shown when not authorized)
+                    if !speechRecognizer.isAuthorized {
+                        Button(action: {
+                            Task {
+                                await speechRecognizer.requestPermissions()
+                            }
+                        }) {
+                            Image(systemName: "lock.shield")
+                                .font(.system(size: 16))
+                                .foregroundColor(.orange)
+                                .frame(width: 32, height: 32)
+                                .background(
+                                    Circle()
+                                        .fill(Color.orange.opacity(0.2))
+                                        .overlay(
+                                            Circle()
+                                                .stroke(Color.orange.opacity(0.6), lineWidth: 1)
+                                        )
+                                )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .padding(.horizontal, 4)
+                    }
+                    
+                    // Send button to execute the command
+                    Button(action: sendCommand) {
+                        Image(systemName: "paperplane.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(commandText.isEmpty ? .gray : .white)
+                            .frame(width: 36, height: 36)
+                            .background(
+                                Circle()
+                                    .fill(commandText.isEmpty ? 
+                                          Color.gray.opacity(0.3) : 
+                                          Color.blue.opacity(0.6))
+                                    .overlay(
+                                        Circle()
+                                            .stroke(commandText.isEmpty ? 
+                                                   Color.gray.opacity(0.5) : 
+                                                   Color.blue.opacity(0.8), 
+                                                   lineWidth: 1)
+                                    )
+                            )
+                            .scaleEffect(commandText.isEmpty ? 1.0 : 1.05)
+                            .animation(.easeInOut(duration: 0.2), value: commandText.isEmpty)
+                    }
+                    .disabled(commandText.isEmpty)  // Disable when no text entered
+                    .buttonStyle(PlainButtonStyle())
+                    .padding(.trailing, 6)
                 }
-                .disabled(commandText.isEmpty)  // Disable when no text entered
-                .buttonStyle(PlainButtonStyle())
-                .padding(.trailing,6)
+                
+
             }
             
             // MARK: - Output Log Section
@@ -154,6 +222,12 @@ struct ContentView: View {
         .frame(width: 300, height: 500)  // Fixed window size
         .background(.black)              // Dark theme background
         .foregroundColor(.white)         // Light text for dark theme
+        .onAppear {
+            // Set up speech recognition callback
+            speechRecognizer.onFinalResult = { text in
+                commandText = text
+            }
+        }
         
     }
     
@@ -170,6 +244,28 @@ struct ContentView: View {
         Task {
             await automator.processCommand(commandText)
             commandText = "" // Clear the command after sending
+        }
+    }
+    
+    /// Toggle voice recording on/off
+    private func toggleVoiceRecording() {
+        if speechRecognizer.isRecording {
+            speechRecognizer.stopRecording()
+        } else {
+            // Check if we need to request permissions first
+            if !speechRecognizer.isAuthorized {
+                Task {
+                    await speechRecognizer.requestPermissions()
+                    // If permissions are granted, start recording
+                    if speechRecognizer.isAuthorized {
+                        await speechRecognizer.startRecording()
+                    }
+                }
+            } else {
+                Task {
+                    await speechRecognizer.startRecording()
+                }
+            }
         }
     }
 }
