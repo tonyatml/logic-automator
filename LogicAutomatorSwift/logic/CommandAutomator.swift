@@ -74,7 +74,11 @@ class CommandAutomator: ObservableObject {
             // Parse and execute commands
             await updateStep("Parsing command...", progress: 0.3)
             
-            if lowerCommand.contains("navigate") || lowerCommand.contains("go to") || lowerCommand.contains("goto") {
+            if lowerCommand.contains("open") {
+                try await handleOpenCommand(command)
+            } else if lowerCommand.contains("create") {
+                try await handleCreateCommand(command)
+            } else if lowerCommand.contains("navigate") || lowerCommand.contains("go to") || lowerCommand.contains("goto") {
                 try await handleNavigationCommand(command)
             } else if lowerCommand.contains("select") && lowerCommand.contains("track") {
                 try await handleTrackSelectionCommand(command)
@@ -116,6 +120,42 @@ class CommandAutomator: ObservableObject {
     }
     
     // MARK: - Command Handlers
+    
+    /// Handle open command (launch Logic Pro)
+    private func handleOpenCommand(_ command: String) async throws {
+        await updateStep("Executing open command...", progress: 0.5)
+        
+        if !logicAutomator.isConnected {
+            await updateStep("Launching Logic Pro...", progress: 0.7)
+            try await logicAutomator.launchLogicPro()
+            await updateStep("Logic Pro launched successfully!", progress: 1.0)
+        } else {
+            await updateStep("Logic Pro is already running, activating...", progress: 0.7)
+            try await logicAutomator.activateLogic()
+            await updateStep("Logic Pro activated!", progress: 1.0)
+        }
+    }
+    
+    /// Handle create project command (create [name])
+    private func handleCreateCommand(_ command: String) async throws {
+        await updateStep("Executing create project command...", progress: 0.5)
+        
+        // Extract project name from command
+        let projectName = extractProjectName(from: command)
+        
+        await updateStep("Creating project: \(projectName)...", progress: 0.6)
+        
+        // Create project configuration
+        let config = ProjectConfig(name: projectName)
+        
+        // Create project from template
+        let projectPath = try await createProjectFromTemplate(config: config)
+        
+        await updateStep("Opening project in Logic Pro...", progress: 0.8)
+        try await logicAutomator.openProject(projectPath)
+        
+        await updateStep("Project '\(projectName)' created and opened successfully!", progress: 1.0)
+    }
     
     /// Handle navigation commands (go to bar X)
     private func handleNavigationCommand(_ command: String) async throws {
@@ -258,11 +298,14 @@ class CommandAutomator: ObservableObject {
     }
     
     /// Show help information
-    private func showHelp() async {
-        await updateStep("Showing help...", progress: 0.5)
+    func showHelp() {
         
         let helpText = """
         Available Commands:
+        
+        Application Control:
+        - "open" (launch/activate Logic Pro)
+        - "create PROJECT_NAME" (create new project)
         
         Navigation:
         - "go to bar X" or "navigate to bar X"
@@ -288,7 +331,13 @@ class CommandAutomator: ObservableObject {
         - "help" or "commands"
         """
         
-        await appendToLog(helpText)
+        let alert = NSAlert()
+        alert.messageText = "Logic Maestro Commands"
+        alert.informativeText = helpText
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+        
     }
     
     // MARK: - Utility Methods
@@ -356,5 +405,131 @@ class CommandAutomator: ObservableObject {
     /// Clear error
     func clearError() {
         lastError = nil
+    }
+    
+    // MARK: - Project Configuration
+    
+    /// Project configuration structure
+    struct ProjectConfig {
+        let name: String
+        let tempo: Int
+        let key: String
+        let midiFile: String?
+        let outputDirectory: String
+        
+        init(name: String, tempo: Int = 120, key: String = "C Major", midiFile: String? = nil, outputDirectory: String? = nil) {
+            self.name = name
+            self.tempo = tempo
+            self.key = key
+            self.midiFile = midiFile
+            self.outputDirectory = outputDirectory ?? getDefaultOutputDirectory()
+        }
+    }
+    
+    // MARK: - Project Template Management
+    
+    /// Create project from template
+    private func createProjectFromTemplate(config: ProjectConfig) async throws -> String {
+        let templatePath = getTemplatePath()
+        
+        // Validate template path
+        guard FileManager.default.fileExists(atPath: templatePath) else {
+            throw LogicError.projectCreationFailed("Template not found: \(templatePath)")
+        }
+        
+        // Create output directory
+        let outputDir = config.outputDirectory
+        try FileManager.default.createDirectory(atPath: outputDir, withIntermediateDirectories: true)
+        
+        // Check if output directory is writable
+        guard FileManager.default.isWritableFile(atPath: outputDir) else {
+            throw LogicError.projectCreationFailed("Output directory not writable: \(outputDir)")
+        }
+        
+        // Copy template to new project location
+        let newProjectPath = "\(outputDir)/\(config.name).logicx"
+        
+        // If project already exists, delete it
+        if FileManager.default.fileExists(atPath: newProjectPath) {
+            try FileManager.default.removeItem(atPath: newProjectPath)
+        }
+        
+        // Copy template
+        try FileManager.default.copyItem(atPath: templatePath, toPath: newProjectPath)
+        
+        return newProjectPath
+    }
+    
+    /// Get template path
+    private func getTemplatePath() -> String {
+        // First try to get template from Bundle
+        if let bundlePath = Bundle.main.path(forResource: "dance_template", ofType: "logicx") {
+            return bundlePath
+        }
+        
+        // If not in Bundle, try to get from parent directory's templates folder
+        let projectRoot = getProjectRoot()
+        let templatePath = "\(projectRoot)/templates/dance_template.logicx"
+        
+        // Check if template exists
+        if FileManager.default.fileExists(atPath: templatePath) {
+            return templatePath
+        }
+        
+        // If still not found, try the python resources templates folder
+        let pythonTemplatePath = "\(projectRoot)/python resources/templates/dance_template.logicx"
+        if FileManager.default.fileExists(atPath: pythonTemplatePath) {
+            return pythonTemplatePath
+        }
+        
+        // Last resort: try current directory
+        let currentTemplatePath = "templates/dance_template.logicx"
+        if FileManager.default.fileExists(atPath: currentTemplatePath) {
+            return currentTemplatePath
+        }
+        
+        return templatePath // Return the expected path even if not found
+    }
+    
+    /// Get project root directory
+    private func getProjectRoot() -> String {
+        // Get parent directory of current working directory
+        let currentPath = FileManager.default.currentDirectoryPath
+        
+        // If currently in LogicAutomatorSwift directory, return parent directory
+        if currentPath.hasSuffix("LogicAutomatorSwift") {
+            return currentPath.replacingOccurrences(of: "/LogicAutomatorSwift", with: "")
+        }
+        
+        return currentPath
+    }
+    
+    /// Get default output directory
+    private static func getDefaultOutputDirectory() -> String {
+        let desktopPath = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop")
+        let projectsPath = "\(desktopPath.path)/LogicAutomator/Projects"
+        
+        // Create directory if it doesn't exist
+        try? FileManager.default.createDirectory(atPath: projectsPath, withIntermediateDirectories: true)
+        
+        return projectsPath
+    }
+    
+    // MARK: - Utility Methods
+    
+    /// Extract project name from command
+    private func extractProjectName(from command: String) -> String {
+        let words = command.components(separatedBy: .whitespaces)
+        
+        // Find the word after "create"
+        if let createIndex = words.firstIndex(of: "create") {
+            let nextIndex = createIndex + 1
+            if nextIndex < words.count {
+                return words[nextIndex]
+            }
+        }
+        
+        // If no name found, use default
+        return "New Project"
     }
 }

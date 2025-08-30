@@ -132,7 +132,7 @@ struct ContentView: View {
                 .buttonStyle(PlainButtonStyle())
                 
                 // Help button (currently uses clearOutput action as placeholder)
-                Button(action: clearOutput) {
+                Button(action: automator.showHelp) {
                     HStack {
                         Text("Help")
                             .font(.caption)
