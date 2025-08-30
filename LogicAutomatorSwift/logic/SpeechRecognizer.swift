@@ -70,7 +70,11 @@ class SpeechRecognizer: NSObject, ObservableObject {
         }
         
         // Add a small delay to ensure audio engine is fully reset
-        try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+        do {
+            try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+        } catch {
+            print("SpeechRecognizer: Error during sleep: \(error.localizedDescription)")
+        }
         
         // Check microphone permission status
         let microphoneStatus = AVCaptureDevice.authorizationStatus(for: .audio)
