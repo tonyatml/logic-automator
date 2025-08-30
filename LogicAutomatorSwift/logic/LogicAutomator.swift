@@ -657,7 +657,10 @@ class LogicAutomator: ObservableObject {
         await MainActor.run {
             currentStatus = "Playback started"
         }
+        
+        log("Sending space key to start playback...")
         try await sendKeys(" ")
+        log("Space key sent successfully")
     }
     
     /// Stop playback
@@ -671,8 +674,12 @@ class LogicAutomator: ObservableObject {
         }
         
         try await activateLogic()
-        print("Stopping playback...")
+        log("Stopping playback...")
         try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        
+        log("Sending space key to stop playback...")
+        try await sendKeys(" ")
+        log("Space key sent successfully")
         
         await MainActor.run {
             currentStatus = "Playback stopped"
@@ -852,7 +859,7 @@ class LogicAutomator: ObservableObject {
         case "`", "~": return 0x32
         case "return", "\n": return 0x24
         case "tab": return 0x30
-        case "space": return 0x31
+        case "space", " ": return 0x31
         case "delete": return 0x33
         case "escape": return 0x35
         case "command": return 0x37

@@ -7,7 +7,7 @@ struct ContentView: View {
     // MARK: - State Properties
     
     /// Observable object that handles Logic Pro automation logic
-    @StateObject private var automator = DanceGoAutomator()
+    @StateObject private var automator = CommandAutomator()
     
     /// Text input for user commands
     @State private var commandText = ""
@@ -32,7 +32,7 @@ struct ContentView: View {
             // MARK: - Status Section
             
             // Status indicator showing connection and permission status
-            StatusView(danceAutomator: automator)
+            StatusView(commandAutomator: automator)
                 .padding(.top, -20)
             
             // MARK: - Command Input Section
@@ -179,7 +179,7 @@ struct ContentView: View {
 /// Displays the current status of Logic Pro connection and permissions
 struct StatusView: View {
     /// Reference to the main automator object for status monitoring
-    @ObservedObject var danceAutomator: DanceGoAutomator
+    @ObservedObject var commandAutomator: CommandAutomator
     
     var body: some View {
         VStack {
@@ -189,10 +189,10 @@ struct StatusView: View {
                 // Logic Pro connection status with colored indicator
                 HStack {
                     Circle()
-                        .fill(danceAutomator.isLogicProRunning ? Color.green : Color.red)
+                        .fill(commandAutomator.isLogicProRunning ? Color.green : Color.red)
                         .frame(width: 8, height: 8)
                     
-                    Text(danceAutomator.isLogicProRunning ? "Logic Pro Connected" : "Logic Pro Not Running")
+                    Text(commandAutomator.isLogicProRunning ? "Logic Pro Connected" : "Logic Pro Not Running")
                         .font(.caption)
                 }
                 
@@ -201,10 +201,10 @@ struct StatusView: View {
                 // Permission status with colored indicator
                 HStack {
                     Circle()
-                        .fill(danceAutomator.hasPermissions ? Color.green : Color.orange)
+                        .fill(commandAutomator.hasPermissions ? Color.green : Color.orange)
                         .frame(width: 8, height: 8)
                     
-                    Text(danceAutomator.hasPermissions ? "Permissions Granted" : "Permissions Required")
+                    Text(commandAutomator.hasPermissions ? "Permissions Granted" : "Permissions Required")
                         .font(.caption)
                 }
                 
