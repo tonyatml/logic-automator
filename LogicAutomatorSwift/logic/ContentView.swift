@@ -2,26 +2,9 @@ import SwiftUI
 import Foundation
 
 struct ContentView: View {
-    @StateObject private var danceAutomator = DanceGoAutomator()
+    @StateObject private var automator = DanceGoAutomator()
     @State private var projectName = ""
-    @State private var tempo = 124
-    @State private var key = "A minor"
-    @State private var midiFilePath = ""
-    @State private var showingFilePicker = false
-    @State private var audioFilePath = "/Users/tonyniu/Desktop/test.midi"
-    @State private var showingAudioFilePicker = false
-    @State private var targetBar = 33
-    @State private var targetTrackName = ""
-    @State private var targetTrackIndex = 61
-    @State private var showingPresetPicker = false
-    @State private var selectedPreset: DanceGoAutomator.ProjectConfig?
     @State private var commandText = ""
-    // Remove this line as we'll use danceAutomator.outputLog instead
-    
-    private let keys = ["C major", "G major", "D major", "A major", "E major", "B major", "F# major", "C# major",
-                        "F major", "Bb major", "Eb major", "Ab major", "Db major", "Gb major", "Cb major",
-                        "A minor", "E minor", "B minor", "F# minor", "C# minor", "G# minor", "D# minor", "A# minor",
-                        "D minor", "G minor", "C minor", "F minor", "Bb minor", "Eb minor", "Ab minor"]
     
     var body: some View {
         VStack {
@@ -39,7 +22,7 @@ struct ContentView: View {
             .padding(.horizontal, 16)
             
             // Status indicator
-            StatusView(danceAutomator: danceAutomator)
+            StatusView(danceAutomator: automator)
                 .padding(.top, -20)
             
             // Command input area
@@ -69,7 +52,7 @@ struct ContentView: View {
             }
             
             ScrollView {
-                Text(danceAutomator.outputLog.isEmpty ? "No output yet..." : danceAutomator.outputLog)
+                Text(automator.outputLog.isEmpty ? "No output yet..." : automator.outputLog)
                     .font(.system(.caption2, design: .monospaced))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(8)
@@ -97,7 +80,7 @@ struct ContentView: View {
                             .stroke(Color.gray, lineWidth: 1)
                     )
                 }
-                .disabled(danceAutomator.outputLog.isEmpty)
+                .disabled(automator.outputLog.isEmpty)
                 .buttonStyle(PlainButtonStyle())
                 
                 Button(action: clearOutput) {
@@ -113,7 +96,7 @@ struct ContentView: View {
                             .stroke(Color.gray, lineWidth: 1)
                     )
                 }
-                .disabled(danceAutomator.outputLog.isEmpty)
+                .disabled(automator.outputLog.isEmpty)
                 .buttonStyle(PlainButtonStyle())
                 
                 Button(action: clearOutput) {
@@ -129,7 +112,7 @@ struct ContentView: View {
                             .stroke(Color.gray, lineWidth: 1)
                     )
                 }
-                .disabled(danceAutomator.outputLog.isEmpty)
+                .disabled(automator.outputLog.isEmpty)
                 .buttonStyle(PlainButtonStyle())
             }
             .padding()
@@ -141,47 +124,12 @@ struct ContentView: View {
     }
     
     private func clearOutput() {
-        danceAutomator.clearLog()
+        automator.clearLog()
     }
-    
-    private func createProject() {
-        Task {
-            await danceAutomator.createDanceProject(
-                name: projectName,
-                tempo: tempo,
-                key: key,
-                midiFile: midiFilePath.isEmpty ? nil : midiFilePath
-            )
-        }
-    }
-    
-    private func testNewTrack() {
-        Task {
-            await danceAutomator.testNewTrack()
-        }
-    }
-    
-    private func testMidiImport() {
-        Task {
-            await danceAutomator.testMidiImport(midiFilePath: midiFilePath)
-        }
-    }
-    
-    private func testRegionReplacement() {
-        Task {
-            let trackName = targetTrackName.isEmpty ? nil : targetTrackName
-            await danceAutomator.testRegionReplacement(
-                bar: targetBar,
-                audioFilePath: audioFilePath,
-                trackName: trackName,
-                trackIndex: targetTrackIndex
-            )
-        }
-    }
-    
+
     private func sendCommand() {
         Task {
-            await danceAutomator.processCommand(commandText)
+            await automator.processCommand(commandText)
             commandText = "" // Clear the command after sending
         }
     }
@@ -218,38 +166,6 @@ struct StatusView: View {
             }
         }
         .padding(.horizontal, 20)
-    }
-}
-
-// MARK: - Preset Button
-struct PresetButton: View {
-    let title: String
-    let config: DanceGoAutomator.ProjectConfig
-    @StateObject private var danceAutomator = DanceGoAutomator()
-    
-    var body: some View {
-        Button(action: {
-            Task {
-                await danceAutomator.createPresetProject(config)
-            }
-        }) {
-            VStack(spacing: 4) {
-                Text(title)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                
-                Text("\(config.tempo) BPM")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .background(Color.blue.opacity(0.1))
-            .foregroundColor(.blue)
-            .cornerRadius(8)
-        }
-        .buttonStyle(PlainButtonStyle())
-        .disabled(danceAutomator.isWorking)
     }
 }
 
