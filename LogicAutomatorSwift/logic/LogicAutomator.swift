@@ -669,9 +669,13 @@ class LogicAutomator: ObservableObject {
         
         // Send space key to start playback
         log("Sending space key to start playback...")
+        log("Space key code: \(getKeyCode(for: " "))")
         try await sendKeys(" ")
         
         log("Space key sent successfully")
+        
+        // Add a small delay after sending space key to ensure it's processed
+        try await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
         await MainActor.run {
             currentStatus = "Playback started"
         }
@@ -696,9 +700,13 @@ class LogicAutomator: ObservableObject {
         
         // Send space key to stop playback
         log("Sending space key to stop playback...")
+        log("Space key code: \(getKeyCode(for: " "))")
         try await sendKeys(" ")
         
         log("Space key sent successfully")
+        
+        // Add a small delay after sending space key to ensure it's processed
+        try await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
         await MainActor.run {
             currentStatus = "Playback stopped"
         }
@@ -762,24 +770,31 @@ class LogicAutomator: ObservableObject {
     
     /// Send keyboard input using CGEvent
     private func sendKeys(_ keys: String) async throws {
-        log("Sending keys: \(keys)")
+        log("Sending keys: '\(keys)' (length: \(keys.count))")
         
-        for char in keys {
-            let keyCode = getKeyCode(for: String(char))
+        for (index, char) in keys.enumerated() {
+            let charString = String(char)
+            let keyCode = getKeyCode(for: charString)
+            log("Character \(index): '\(charString)' -> keyCode: \(keyCode)")
+            
             if keyCode != 0 {
                 // Key down
                 let keyDownEvent = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true)
                 keyDownEvent?.post(tap: .cghidEventTap)
+                log("Key down sent for '\(charString)'")
                 
                 // Delay for key down
-                try await Task.sleep(nanoseconds: 60_000_000) // 0.06 seconds
+                try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
                 
                 // Key up
                 let keyUpEvent = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: false)
                 keyUpEvent?.post(tap: .cghidEventTap)
+                log("Key up sent for '\(charString)'")
                 
                 // Delay between characters
-                try await Task.sleep(nanoseconds: 60_000_000) // 0.06 seconds
+                try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+            } else {
+                log("Unknown key code for character '\(charString)'")
             }
         }
     }

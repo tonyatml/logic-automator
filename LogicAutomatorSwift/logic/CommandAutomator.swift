@@ -67,9 +67,8 @@ class CommandAutomator: ObservableObject {
                 try await logicAutomator.launchLogicPro()
             }
             
-            // Activate Logic Pro to ensure it's in front
-            await updateStep("Activating Logic Pro...", progress: 0.25)
-            try await logicAutomator.activateLogic()
+            // Note: Individual command handlers will activate Logic Pro as needed
+            // This prevents duplicate activation calls
             
             // Parse and execute commands
             await updateStep("Parsing command...", progress: 0.3)
