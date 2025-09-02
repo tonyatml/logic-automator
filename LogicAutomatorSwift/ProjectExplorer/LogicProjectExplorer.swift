@@ -217,6 +217,13 @@ class LogicProjectExplorer: ObservableObject {
             if let track = try await analyzeTrackElement(child, index: index) {
                 tracks.append(track)
                 log("Discovered track \(index): \(track.name)")
+                
+                // Analyze regions within this track
+                try await analyzeRegionsInTrack(track, trackIndex: index)
+            } else {
+                // Even if not recognized as a track, analyze its children for regions
+                log("Element \(index) not recognized as track, but analyzing its children for regions...")
+                try await analyzeChildrenForRegions(child, elementIndex: index)
             }
         }
         
@@ -271,6 +278,174 @@ class LogicProjectExplorer: ObservableObject {
         log("  ---")
     }
     
+    /// Analyze regions within a track
+    private func analyzeRegionsInTrack(_ track: LogicTrack, trackIndex: Int) async throws {
+        log("=== Analyzing regions in Track \(trackIndex): \(track.name) ===")
+        
+        // Get children of the track element
+        var children: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(track.element, kAXChildrenAttribute as CFString, &children)
+        
+        guard result == .success, let children = children else {
+            log("  No children found in track")
+            return
+        }
+        
+        let childrenArray = children as! [AXUIElement]
+        log("  Track has \(childrenArray.count) children (potential regions)")
+        
+        // Analyze each child element
+        for (regionIndex, child) in childrenArray.enumerated() {
+            try await analyzeRegionElement(child, regionIndex: regionIndex, trackIndex: trackIndex, trackName: track.name)
+        }
+        
+        log("=== End of region analysis for Track \(trackIndex) ===")
+    }
+    
+    /// Analyze children of any element for regions
+    private func analyzeChildrenForRegions(_ element: AXUIElement, elementIndex: Int) async throws {
+        // Get children of the element
+        var children: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &children)
+        
+        guard result == .success, let children = children else {
+            log("Element \(elementIndex) has no children")
+            return
+        }
+        
+        let childrenArray = children as! [AXUIElement]
+        log("Element \(elementIndex) contains \(childrenArray.count) children, analyzing for regions...")
+        
+        // Analyze each child element
+        for (index, child) in childrenArray.enumerated() {
+            try await analyzeRegionElement(child, regionIndex: index, trackIndex: elementIndex, trackName: "Element \(elementIndex)")
+        }
+    }
+    
+    /// Analyze a single region element
+    private func analyzeRegionElement(_ element: AXUIElement, regionIndex: Int, trackIndex: Int, trackName: String) async throws {
+        // Get role
+        var role: CFTypeRef?
+        let roleResult = AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
+        let roleString = (roleResult == .success && role != nil) ? (role as? String ?? "nil") : "nil"
+        
+        // Get title
+        var title: CFTypeRef?
+        let titleResult = AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &title)
+        let titleString = (titleResult == .success && title != nil) ? (title as? String ?? "nil") : "nil"
+        
+        // Get description
+        var description: CFTypeRef?
+        let descResult = AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &description)
+        let descString = (descResult == .success && description != nil) ? (description as? String ?? "nil") : "nil"
+        
+        // Get subrole
+        var subrole: CFTypeRef?
+        let subroleResult = AXUIElementCopyAttributeValue(element, kAXSubroleAttribute as CFString, &subrole)
+        let subroleString = (subroleResult == .success && subrole != nil) ? (subrole as? String ?? "nil") : "nil"
+        
+        // Get identifier
+        var identifier: CFTypeRef?
+        let idResult = AXUIElementCopyAttributeValue(element, kAXIdentifierAttribute as CFString, &identifier)
+        let idString = (idResult == .success && identifier != nil) ? (identifier as? String ?? "nil") : "nil"
+        
+        // Get child count
+        var childCount: CFTypeRef?
+        let childResult = AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &childCount)
+        let childCountString = (childResult == .success && childCount != nil) ? "\((childCount as! [AXUIElement]).count)" : "0"
+        
+        log("  Region \(regionIndex) in Track \(trackIndex) (\(trackName)):")
+        log("    Role: \(roleString)")
+        log("    Title: \(titleString)")
+        log("    Description: \(descString)")
+        log("    Subrole: \(subroleString)")
+        log("    Identifier: \(idString)")
+        log("    Children: \(childCountString)")
+        
+        // Check if this looks like a region
+        if isRegionElement(role: roleString, description: descString, title: titleString) {
+            log("    *** This appears to be a REGION ***")
+        }
+        
+        log("    ---")
+        
+        // Analyze the children of this region
+        try await analyzeRegionChildren(element, regionIndex: regionIndex, trackIndex: trackIndex, trackName: trackName)
+    }
+    
+    /// Analyze the children of a region element
+    private func analyzeRegionChildren(_ element: AXUIElement, regionIndex: Int, trackIndex: Int, trackName: String) async throws {
+        // Get children of the region element
+        var children: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &children)
+        
+        guard result == .success, let children = children else {
+            return
+        }
+        
+        let childrenArray = children as! [AXUIElement]
+        if childrenArray.count > 0 {
+            log("      Region \(regionIndex) has \(childrenArray.count) children:")
+            
+            // Analyze each child of the region
+            for (childIndex, child) in childrenArray.enumerated() {
+                try await analyzeRegionChild(child, childIndex: childIndex, regionIndex: regionIndex, trackIndex: trackIndex, trackName: trackName)
+            }
+        }
+    }
+    
+    /// Analyze a single child of a region
+    private func analyzeRegionChild(_ element: AXUIElement, childIndex: Int, regionIndex: Int, trackIndex: Int, trackName: String) async throws {
+        // Get basic attributes
+        var role: CFTypeRef?
+        let roleResult = AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
+        let roleString = (roleResult == .success && role != nil) ? (role as? String ?? "nil") : "nil"
+        
+        var title: CFTypeRef?
+        let titleResult = AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &title)
+        let titleString = (titleResult == .success && title != nil) ? (title as? String ?? "nil") : "nil"
+        
+        var description: CFTypeRef?
+        let descResult = AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &description)
+        let descString = (descResult == .success && description != nil) ? (description as? String ?? "nil") : "nil"
+        
+        var subrole: CFTypeRef?
+        let subroleResult = AXUIElementCopyAttributeValue(element, kAXSubroleAttribute as CFString, &subrole)
+        let subroleString = (subroleResult == .success && subrole != nil) ? (subrole as? String ?? "nil") : "nil"
+        
+        var identifier: CFTypeRef?
+        let idResult = AXUIElementCopyAttributeValue(element, kAXIdentifierAttribute as CFString, &identifier)
+        let idString = (idResult == .success && identifier != nil) ? (identifier as? String ?? "nil") : "nil"
+        
+        var value: CFTypeRef?
+        let valueResult = AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &value)
+        let valueString = (valueResult == .success && value != nil) ? (value as? String ?? "nil") : "nil"
+        
+        log("        Child \(childIndex): Role=\(roleString), Title=\(titleString), Description=\(descString), Subrole=\(subroleString), Identifier=\(idString), Value=\(valueString)")
+    }
+    
+    /// Check if an element appears to be a region
+    private func isRegionElement(role: String, description: String, title: String) -> Bool {
+        // Common region indicators
+        let regionRoles = ["AXGroup", "AXLayoutArea", "AXStaticText"]
+        let regionKeywords = ["region", "audio", "midi", "sample", "loop", "clip"]
+        
+        // Check role
+        if regionRoles.contains(role) {
+            return true
+        }
+        
+        // Check description and title for region-related keywords
+        let allText = "\(description) \(title)".lowercased()
+        for keyword in regionKeywords {
+            if allText.contains(keyword) {
+                return true
+            }
+        }
+        
+        return false
+    }
+    
     /// Analyze track element
     private func analyzeTrackElement(_ element: AXUIElement, index: Int) async throws -> LogicTrack? {
         // First check if this element is actually a track using our new detection method
@@ -321,7 +496,8 @@ class LogicProjectExplorer: ObservableObject {
         let trackRoles = [
             "AXRow",           // Track row
             "AXGroup",         // Track group
-            "AXStaticText"     // Track name text
+            "AXStaticText",    // Track name text
+            "AXLayoutArea"     // Track layout area (actual role found in Logic Pro)
         ]
         return trackRoles.contains(role)
     }
@@ -334,12 +510,24 @@ class LogicProjectExplorer: ObservableObject {
         
         if descResult == .success, let description = description as? String, !description.isEmpty {
             // Check if description matches track pattern: "Track X "Name""
-            if description.matches(of: #/^Track \d+ ".*"$/).count > 0 {
+            if description.range(of: "Track \\d+ \".*\"", options: .regularExpression) != nil {
+                log("DEBUG: Regex matched: '\(description)'")
                 return true
             }
             
             // Also check if description contains "Track Background" (fallback)
             if description.contains("Track Background") {
+                log("DEBUG: Track Background found: '\(description)'")
+                return true
+            }
+            
+            // Debug: log what we're checking
+            log("DEBUG: Checking description: '\(description)'")
+            log("DEBUG: Regex pattern: 'Track \\\\d+ \".*\"'")
+            
+            // Try a simpler approach - just check if it starts with "Track" and contains quotes
+            if description.hasPrefix("Track") && description.contains("\"") {
+                log("DEBUG: Simple pattern matched: '\(description)'")
                 return true
             }
         }
