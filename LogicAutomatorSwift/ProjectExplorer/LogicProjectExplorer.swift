@@ -135,8 +135,56 @@ class LogicProjectExplorer: ObservableObject {
     private func findTrackList(in window: AXUIElement) async throws -> AXUIElement {
         log("Finding track list in window...")
         
-        // Recursively search for track list
-        return try await findElementWithRole(in: window, role: "AXList", maxDepth: 10)
+        // Based on Accessibility Inspector, look for the "Tracks contents (group)" element
+        // which contains the actual track elements
+        return try await findTracksContentsElement(in: window, maxDepth: 10)
+    }
+    
+    /// Find the "Tracks contents" element that contains the actual tracks
+    private func findTracksContentsElement(in element: AXUIElement, maxDepth: Int) async throws -> AXUIElement {
+        guard maxDepth > 0 else {
+            throw LogicError.elementNotFound("Tracks contents element not found")
+        }
+        
+        // Check current element
+        var description: CFTypeRef?
+        let descResult = AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &description)
+        
+        if descResult == .success, let description = description as? String {
+            if description.contains("Tracks contents") {
+                log("Found Tracks contents element")
+                return element
+            }
+        }
+        
+        // Also check for the specific class name from Accessibility Inspector
+        var className: CFTypeRef?
+        let classResult = AXUIElementCopyAttributeValue(element, kAXSubroleAttribute as CFString, &className)
+        
+        if classResult == .success, let className = className as? String {
+            if className.contains("ArrangeContentsSectionView") {
+                log("Found ArrangeContentsSectionView element")
+                return element
+            }
+        }
+        
+        // Search child elements
+        var children: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &children)
+        
+        if result == .success, let children = children {
+            let childrenArray = children as! [AXUIElement]
+            
+            for child in childrenArray {
+                do {
+                    return try await findTracksContentsElement(in: child, maxDepth: maxDepth - 1)
+                } catch {
+                    continue
+                }
+            }
+        }
+        
+        throw LogicError.elementNotFound("Tracks contents element not found")
     }
     
     /// Explore all tracks in track list
@@ -157,6 +205,13 @@ class LogicProjectExplorer: ObservableObject {
         let childrenArray = children as! [AXUIElement]
         log("Track list contains \(childrenArray.count) child elements")
         
+        // Debug: Print detailed information about each child element
+        log("=== DEBUG: Analyzing all child elements ===")
+        for (index, child) in childrenArray.enumerated() {
+            await printElementDetails(child, index: index)
+        }
+        log("=== End of child element analysis ===")
+        
         // Traverse each child element, look for tracks
         for (index, child) in childrenArray.enumerated() {
             if let track = try await analyzeTrackElement(child, index: index) {
@@ -168,9 +223,62 @@ class LogicProjectExplorer: ObservableObject {
         return tracks
     }
     
+    /// Print detailed information about an element for debugging
+    private func printElementDetails(_ element: AXUIElement, index: Int) async {
+        // Get role
+        var role: CFTypeRef?
+        let roleResult = AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
+        let roleString = (roleResult == .success && role != nil) ? (role as? String ?? "nil") : "nil"
+        
+        // Get title
+        var title: CFTypeRef?
+        let titleResult = AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &title)
+        let titleString = (titleResult == .success && title != nil) ? (title as? String ?? "nil") : "nil"
+        
+        // Get description
+        var description: CFTypeRef?
+        let descResult = AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &description)
+        let descString = (descResult == .success && description != nil) ? (description as? String ?? "nil") : "nil"
+        
+        // Get subrole
+        var subrole: CFTypeRef?
+        let subroleResult = AXUIElementCopyAttributeValue(element, kAXSubroleAttribute as CFString, &subrole)
+        let subroleString = (subroleResult == .success && subrole != nil) ? (subrole as? String ?? "nil") : "nil"
+        
+        // Get identifier
+        var identifier: CFTypeRef?
+        let idResult = AXUIElementCopyAttributeValue(element, kAXIdentifierAttribute as CFString, &identifier)
+        let idString = (idResult == .success && identifier != nil) ? (identifier as? String ?? "nil") : "nil"
+        
+        // Get value
+        var value: CFTypeRef?
+        let valueResult = AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &value)
+        let valueString = (valueResult == .success && value != nil) ? (value as? String ?? "nil") : "nil"
+        
+        // Get child count
+        var childCount: CFTypeRef?
+        let childResult = AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &childCount)
+        let childCountString = (childResult == .success && childCount != nil) ? "\((childCount as! [AXUIElement]).count)" : "0"
+        
+        log("Element \(index):")
+        log("  Role: \(roleString)")
+        log("  Title: \(titleString)")
+        log("  Description: \(descString)")
+        log("  Subrole: \(subroleString)")
+        log("  Identifier: \(idString)")
+        log("  Value: \(valueString)")
+        log("  Children: \(childCountString)")
+        log("  ---")
+    }
+    
     /// Analyze track element
     private func analyzeTrackElement(_ element: AXUIElement, index: Int) async throws -> LogicTrack? {
-        // Get track role
+        // First check if this element is actually a track using our new detection method
+        if !(try await isTrackElement(element)) {
+            return nil
+        }
+        
+        // Get track role for additional validation
         var role: CFTypeRef?
         let roleResult = AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
         
@@ -178,7 +286,7 @@ class LogicProjectExplorer: ObservableObject {
             return nil
         }
         
-        // Check if it's a track-related element
+        // Additional role validation
         if !isTrackRelatedRole(role) {
             return nil
         }
@@ -209,12 +317,44 @@ class LogicProjectExplorer: ObservableObject {
     
     /// Check if role is track-related
     private func isTrackRelatedRole(_ role: String) -> Bool {
-        // More precise track identification
+        // More precise track identification based on Accessibility Inspector
         let trackRoles = [
             "AXRow",           // Track row
-            "AXGroup"          // Track group
+            "AXGroup",         // Track group
+            "AXStaticText"     // Track name text
         ]
         return trackRoles.contains(role)
+    }
+    
+    /// Check if element is a track based on description and other attributes
+    private func isTrackElement(_ element: AXUIElement) async throws -> Bool {
+        // Check description for track pattern: "Track X "Name""
+        var description: CFTypeRef?
+        let descResult = AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &description)
+        
+        if descResult == .success, let description = description as? String, !description.isEmpty {
+            // Check if description matches track pattern: "Track X "Name""
+            if description.matches(of: #/^Track \d+ ".*"$/).count > 0 {
+                return true
+            }
+            
+            // Also check if description contains "Track Background" (fallback)
+            if description.contains("Track Background") {
+                return true
+            }
+        }
+        
+        // Check if it has track-related accessibility identifier
+        var identifier: CFTypeRef?
+        let idResult = AXUIElementCopyAttributeValue(element, kAXIdentifierAttribute as CFString, &identifier)
+        
+        if idResult == .success, let identifier = identifier as? String {
+            if identifier.contains("CLgViewAccessibilityTrac") {
+                return true
+            }
+        }
+        
+        return false
     }
     
     /// Get track name
@@ -225,14 +365,31 @@ class LogicProjectExplorer: ObservableObject {
         var title: CFTypeRef?
         let titleResult = AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &title)
         if titleResult == .success, let title = title as? String, !title.isEmpty {
-            return title
+            // Clean up the title - remove "Track Background" and extract just the name
+            let cleanTitle = title.replacingOccurrences(of: "Track Background", with: "").trimmingCharacters(in: .whitespaces)
+            if !cleanTitle.isEmpty {
+                return cleanTitle
+            }
         }
         
-        // Method 2: Get description
+        // Method 2: Get description and extract track name from it
         var description: CFTypeRef?
         let descResult = AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &description)
         if descResult == .success, let description = description as? String, !description.isEmpty {
-            return description
+            // Look for quoted track names like "Lead Vocal", "Chorus Vocal"
+            if let range = description.range(of: "\"[^\"]+\"") {
+                let quotedName = String(description[range])
+                let cleanName = quotedName.replacingOccurrences(of: "\"", with: "")
+                if !cleanName.isEmpty {
+                    return cleanName
+                }
+            }
+            
+            // If no quoted name, try to extract from description
+            let cleanDesc = description.replacingOccurrences(of: "Track Background", with: "").trimmingCharacters(in: .whitespaces)
+            if !cleanDesc.isEmpty && cleanDesc != "Track Background" {
+                return cleanDesc
+            }
         }
         
         // Method 3: Find text in child elements (more precise search)
@@ -533,9 +690,19 @@ class LogicProjectExplorer: ObservableObject {
                         let titleResult = AXUIElementCopyAttributeValue(child, kAXTitleAttribute as CFString, &title)
                         
                         if titleResult == .success, let title = title as? String, !title.isEmpty {
+                            // Look for quoted track names first
+                            if let range = title.range(of: "\"[^\"]+\"") {
+                                let quotedName = String(title[range])
+                                let cleanName = quotedName.replacingOccurrences(of: "\"", with: "")
+                                if !cleanName.isEmpty {
+                                    return cleanName
+                                }
+                            }
+                            
                             // Filter out some common non-name text
                             if !title.contains("M") && !title.contains("S") && !title.contains("R") && 
-                               !title.contains("I") && !title.contains("dB") && !title.contains("%") {
+                               !title.contains("I") && !title.contains("dB") && !title.contains("%") &&
+                               !title.contains("Track Background") {
                                 return title
                             }
                         }
