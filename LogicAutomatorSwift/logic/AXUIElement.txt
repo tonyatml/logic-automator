@@ -1,0 +1,587 @@
+
+import ColorSync
+import CoreGraphics
+import CoreServices
+import CoreText
+import ImageIO
+
+/**
+ @function AXIsProcessTrustedWithOptions
+ @abstract Returns whether the current process is a trusted accessibility client.
+ @param options A dictionary of options, or NULL to specify no options. The following options are available:
+     
+ KEY: kAXTrustedCheckOptionPrompt
+ VALUE: ACFBooleanRef indicating whether the user will be informed if the current process is untrusted. This could be used, for example, on application startup to always warn a user if accessibility is not enabled for the current process. Prompting occurs asynchronously and does not affect the return value.
+     
+ @result Returns TRUE if the current process is a trusted accessibility client, FALSE if it is not.
+ */
+@available(macOS 10.9, *)
+public func AXIsProcessTrustedWithOptions(_ options: CFDictionary?) -> Bool
+
+@available(macOS 10.9, *)
+public var kAXTrustedCheckOptionPrompt: Unmanaged<CFString>
+
+/**
+ @function AXIsProcessTrusted
+ @abstract Returns whether the current process is a trusted accessibility client.
+ 
+ @result Returns TRUE if the current process is a trusted accessibility client, FALSE if it is not.
+ */
+@available(macOS 10.4, *)
+public func AXIsProcessTrusted() -> Bool
+
+/**
+ @typedef AXUIElementRef
+ @abstract A structure used to refer to an accessibility object.
+ 
+ @discussion An accessibility object provides information about the user interface object it represents. This information includes the object's
+ position in the accessibility hierarchy, its position on the display, details about what it is, and what actions it can perform. Accessibility objects
+ respond to messages sent by assistive applications and send notifications that describe state changes.
+ */
+public class AXUIElement : Hashable {
+}
+
+/**
+ @enum kAXCopyMultipleAttributeOptionStopOnError
+ @discussion Pass this option to @link AXUIElementCopyMultipleAttributeValues AXUIElementCopyMultipleAttributeValues@/link to force the function
+ to stop when it gets an error.
+ */
+public struct AXCopyMultipleAttributeOptions : OptionSet, @unchecked Sendable {
+
+    public init(rawValue: UInt32)
+
+    public static var stopOnError: AXCopyMultipleAttributeOptions { get }
+}
+
+/**
+ @function AXUIElementGetTypeID
+ @abstract Returns the unique type identifier for the AXUIElementRef type.
+ 
+ @result Returns a CFTypeID representing the AXUIElementRef type.
+ */
+public func AXUIElementGetTypeID() -> CFTypeID
+
+/**
+ @function AXUIElementCopyAttributeNames
+ @abstract Returns a list of all the attributes supported by the specified accessibility object.
+ 
+ @param element The AXUIElementRef representing the accessibility object.
+ @param names On return, an array containing the accessibility object's attribute names.
+ 
+ @result If unsuccessful, <code>AXUIElementCopyAttributeNames</code> may return one of the following error codes, among others:
+ <dl><dt><code>kAXErrorAttributeUnsupported</code></dt><dd>The specified AXUIElementRef does not support the specified attribute.</dd>
+ <dt><code>kAXErrorIllegalArgument</code></dt><dd>One or both of the arguments is an illegal value.</dd>
+ <dt><code>kAXErrorInvalidUIElement</code></dt><dd>The AXUIElementRef is invalid.</dd>
+ <dt><code>kAXErrorFailure</code></dt><dd>There was a system memory failure.</dd>
+ <dt><code>kAXErrorCannotComplete</code></dt><dd>The function cannot complete because messaging has failed in some way.</dd>
+ <dt><code>kAXErrorNotImplemented</code></dt><dd>The process does not fully support the accessibility API.</dd></dl>
+ */
+public func AXUIElementCopyAttributeNames(_ element: AXUIElement, _ names: UnsafeMutablePointer<CFArray?>) -> AXError
+
+/**
+ @function AXUIElementCopyAttributeValue
+ @abstract Returns the value of an accessibility object's attribute.
+ 
+ @param element The AXUIElementRef representing the accessibility object.
+ @param attribute The attribute name.
+ @param value On return, the value associated with the specified attribute.
+ 
+ @result If unsuccessful, <code>AXUIElementCopyAttributeValue</code> may return one of the following error codes, among others:
+ <dl><dt><code>kAXErrorAttributeUnsupported</code></dt><dd>The specified AXUIElementRef does not support the specified attribute.</dd>
+ <dt><code>kAXErrorNoValue</code></dt><dd>The specified attribute does not have a value.</dd>
+ <dt><code>kAXErrorIllegalArgument</code></dt><dd>One or more of the arguments is an illegal value.</dd>
+ <dt><code>kAXErrorInvalidUIElement</code></dt><dd>The AXUIElementRef is invalid.</dd>
+ <dt><code>kAXErrorCannotComplete</code></dt><dd>The function cannot complete because messaging has failed in some way.</dd>
+ <dt><code>kAXErrorNotImplemented</code></dt><dd>The process does not fully support the accessibility API.</dd></dl>
+ */
+public func AXUIElementCopyAttributeValue(_ element: AXUIElement, _ attribute: CFString, _ value: UnsafeMutablePointer<CFTypeRef?>) -> AXError
+
+/**
+ @function AXUIElementGetAttributeValueCount
+ @abstract Returns the count of the array of an accessibility object's attribute value.
+ 
+ @param element The AXUIElementRef representing the accessibility object.
+ @param attribute The attribute name.
+ @param count On return, the size of the array that is the attribute's value.
+ 
+ @result If unsuccessful, <code>AXUIElementGetAttributeValueCount</code> may return one of the following error codes, among others:
+ <dl><dt><code>kAXErrorIllegalArgument</code></dt><dd>The attribute's value is not an array or one of the other arguments is an illegal value.</dd>
+ <dt><code>kAXErrorAttributeUnsupported</code></dt><dd>The specified AXUIElementRef does not support the specified attribute.</dd>
+ <dt><code>kAXErrorInvalidUIElement</code></dt><dd>The AXUIElementRef is invalid.</dd>
+ <dt><code>kAXErrorCannotComplete</code></dt><dd>The function cannot complete because messaging has failed in some way.</dd>
+ <dt><code>kAXErrorNotImplemented</code></dt><dd>The process does not fully support the accessibility API.</dd></dl>
+ */
+public func AXUIElementGetAttributeValueCount(_ element: AXUIElement, _ attribute: CFString, _ count: UnsafeMutablePointer<CFIndex>) -> AXError
+
+/**
+ @function AXUIElementCopyAttributeValues
+ @abstract Returns an array of attribute values for the accessibility object's attribute, starting at the specified index.
+ @discussion This function is useful for dealing with large arrays, for example, a table view with a large number of children.
+ 
+ @param element The AXUIElementRef representing the accessibility object.
+ @param attribute The attribute name.
+ @param index The index into the array.
+ @param maxValues The maximum number of values you want (this may be more or less than the number of values associated with the attribute).
+ @param values On return, the attribute values you requested. If <code>maxValues</code> is greater than the number of values associated with the attribute, the <code>values</code> array will contain values found between <code>index</code> and the end of the attribute's array, inclusive.
+ 
+ @result If unsuccessful, <code>AXUIElementCopyAttributeValues</code> may return one of the following error codes, among others:
+ <dl><dt><code>kAXErrorIllegalArgument</code></dt><dd>The attribute's value is not array, the <code>index</code> or <code>maxValues</code> arguments are outside the array's range, or one of the other arguments is an illegal value.</dd>
+ <dt><code>kAXErrorNoValue</code></dt><dd>The specified attribute does not have a value.</dd>
+ <dt><code>kAXErrorInvalidUIElement</code></dt><dd>The AXUIElementRef is invalid.</dd>
+ <dt><code>kAXErrorCannotComplete</code></dt><dd>The function cannot complete because messaging has failed in some way.</dd>
+ <dt><code>kAXErrorNotImplemented</code></dt><dd>The process does not fully support the accessibility API.</dd></dl>
+ */
+public func AXUIElementCopyAttributeValues(_ element: AXUIElement, _ attribute: CFString, _ index: CFIndex, _ maxValues: CFIndex, _ values: UnsafeMutablePointer<CFArray?>) -> AXError
+
+/**
+ @function AXUIElementIsAttributeSettable
+ @abstract Returns whether the specified accessibility object's attribute can be modified.
+ @discussion If you receive a <code>kAXErrorCannotComplete</code> error from this function, you might want to repeat the request or change the timeout value.
+ 
+ @param element The AXUIElementRef representing the accessibility object.
+ @param attribute The attribute name.
+ @param settable On return, a Boolean value indicating whether the attribute is settable.
+ 
+ @result If unsuccessful, <code>AXUIElementIsAttributeSettable</code> may return one of the following error codes, among others:
+ <dl><dt><code>kAXErrorCannotComplete</code></dt><dd>The function cannot complete because messaging has failed in some way (often due to a timeout).</dd>
+ <dt><code>kAXErrorIllegalArgument</code></dt><dd>One or more of the arguments is an illegal value.</dd>
+ <dt><code>kAXErrorAttributeUnsupported</code></dt><dd>The specified AXUIElementRef does not support the specified attribute.</dd>
+ <dt><code>kAXErrorNoValue</code></dt><dd>The specified attribute does not have a value.</dd>
+ <dt><code>kAXErrorInvalidUIElement</code></dt><dd>The AXUIElementRef is invalid.</dd>
+ <dt><code>kAXErrorNotImplemented</code></dt><dd>The process does not fully support the accessibility API.</dd></dl>
+ */
+public func AXUIElementIsAttributeSettable(_ element: AXUIElement, _ attribute: CFString, _ settable: UnsafeMutablePointer<DarwinBoolean>) -> AXError
+
+/**
+ @function AXUIElementSetAttributeValue
+ @abstract Sets the accessibility object's attribute to the specified value.
+ @discussion You can send and receive many different CFTypeRefs using the accessibility API.
+ These include all CFPropertyListRef types, AXUIElementRef, AXValueRef, AXTextMarkerRef, AXTextMarkerRangeRef,
+ CFNullRef, CFAttributedStringRef, and CRURLRef.
+ @param element The AXUIElementRef representing the accessibility object.
+ @param attribute The attribute name.
+ @param value The new value for the attribute.
+ 
+ @result If unsuccessful, <code>AXUIElementSetAttributeValue</code> may return one of the following error codes, among others:
+ <dl><dt><code>kAXErrorIllegalArgument</code></dt><dd>The value is not recognized by the accessible application or one of the other arguments is an illegal value.</dd>
+ <dt><code>kAXErrorAttributeUnsupported</code></dt><dd>The specified AXUIElementRef does not support the specified attribute.</dd>
+ <dt><code>kAXErrorInvalidUIElement</code></dt><dd>The AXUIElementRef is invalid.</dd>
+ <dt><code>kAXErrorCannotComplete</code></dt><dd>The function cannot complete because messaging has failed in some way.</dd>
+ <dt><code>kAXErrorNotImplemented</code></dt><dd>The process does not fully support the accessibility API.</dd></dl>
+ */
+public func AXUIElementSetAttributeValue(_ element: AXUIElement, _ attribute: CFString, _ value: CFTypeRef) -> AXError
+
+/**
+ @function AXUIElementCopyMultipleAttributeValues
+ @abstract Returns the values of multiple attributes in the accessibility object.
+ @discussion If the specified AXUIElementRef does not support an attribute passed in the <code>attributes</code> array, the returned array
+ can contain an error or CFNull at the corresponding position.
+ @param element The AXUIElementRef representing the accessibility object.
+ @param attributes An array of attribute names.
+ @param options A value that tells <code>AXUIElementCopyMultipleAttributeValues</code> how to handle errors.
+ @param values On return, an array in which each position contains the value of the
+ attribute that is in the corresponding position in the passed-in <code>attributes</code> array (or CFNull). If <code>options</code> = 0,
+ the <code>values</code> array can contain an AXValueRef of type <code>kAXValueAXErrorType</code> in the corresponding position. If <code>options</code> = <code>kAXCopyMultipleAttributeOptionStopOnError</code>,
+ this function will return immediately when it gets an error.
+ 
+ @result If unsuccessful, <code>AXUIElementCopyMultipleAttributeValues</code> may return one of the following error codes, among others:
+ <dl><dt><code>kAXErrorIllegalArgument</code></dt><dd>One of the arguments is an illegal value.</dd>
+ <dt><code>kAXErrorInvalidUIElement</code></dt><dd>The AXUIElementRef is invalid.</dd>
+ <dt><code>kAXErrorCannotComplete</code></dt><dd>The function cannot complete because messaging has failed in some way.</dd>
+ <dt><code>kAXErrorNotImplemented</code></dt><dd>The process does not fully support the accessibility API.</dd></dl>
+ */
+@available(macOS 10.4, *)
+public func AXUIElementCopyMultipleAttributeValues(_ element: AXUIElement, _ attributes: CFArray, _ options: AXCopyMultipleAttributeOptions, _ values: UnsafeMutablePointer<CFArray?>) -> AXError
+
+/**
+ @function AXUIElementCopyParameterizedAttributeNames
+ @abstract Returns a list of all the parameterized attributes supported by the specified accessibility object.
+ 
+ @param element The AXUIElementRef representing the accessibility object.
+ @param names On return, an array containing the accessibility object's parameterized attribute names.
+ 
+ @result If unsuccessful, <code>AXUIElementCopyParameterizedAttributeNames</code> may return one of the following error codes, among others:
+ <dl><dt><code>kAXErrorAttributeUnsupported</code> or <code>kAXErrorParameterizedAttributeUnsupported</code></dt><dd>The specified AXUIElementRef does not support the specified parameterized attribute.</dd>
+ <dt><code>kAXErrorIllegalArgument</code></dt><dd>One or both of the arguments is an illegal value.</dd>
+ <dt><code>kAXErrorInvalidUIElement</code></dt><dd>The AXUIElementRef is invalid.</dd>
+ <dt><code>kAXErrorFailure</code></dt><dd>There was some sort of system memory failure.</dd>
+ <dt><code>kAXErrorCannotComplete</code></dt><dd>The function cannot complete because messaging has failed in some way.</dd>
+ <dt><code>kAXErrorNotImplemented</code></dt><dd>The process does not fully support the accessibility API.</dd></dl>
+ */
+@available(macOS 10.3, *)
+public func AXUIElementCopyParameterizedAttributeNames(_ element: AXUIElement, _ names: UnsafeMutablePointer<CFArray?>) -> AXError
+
+/**
+ @function AXUIElementCopyParameterizedAttributeValue
+ @abstract Returns the value of an accessibility object's parameterized attribute.
+ 
+ @param element The AXUIElementRef representing the accessibility object.
+ @param parameterizedAttribute The parameterized attribute.
+ @param parameter The parameter.
+ @param result On return, the value of the parameterized attribute.
+ 
+ @result If unsuccessful, <code>AXUIElementCopyParameterizedAttributeValue</code> may return one of the following error codes, among others:
+ <dl><dt><code>kAXErrorAttributeUnsupported</code> or <code>kAXErrorParameterizedAttributeUnsupported</code></dt><dd>The specified AXUIElementRef does not support the specified parameterized attribute.</dd>
+ <dt><code>kAXErrorNoValue</code></dt><dd>The specified parameterized attribute does not have a value.</dd>
+ <dt><code>kAXErrorIllegalArgument</code></dt><dd>One or more of the arguments is an illegal value.</dd>
+ <dt><code>kAXErrorInvalidUIElement</code></dt><dd>The AXUIElementRef is invalid.</dd>
+ <dt><code>kAXErrorCannotComplete</code></dt><dd>The function cannot complete because messaging has failed in some way.</dd>
+ <dt><code>kAXErrorNotImplemented</code></dt><dd>The process does not fully support the accessibility API.</dd></dl>
+ */
+@available(macOS 10.3, *)
+public func AXUIElementCopyParameterizedAttributeValue(_ element: AXUIElement, _ parameterizedAttribute: CFString, _ parameter: CFTypeRef, _ result: UnsafeMutablePointer<CFTypeRef?>) -> AXError
+
+/**
+ @function AXUIElementCopyActionNames
+ @abstract Returns a list of all the actions the specified accessibility object can perform.
+ @param element The AXUIElementRef representing the accessibility object.
+ @param names On return, an array of actions the accessibility object can perform (empty if the accessibility object supports no actions).
+ 
+ @result If unsuccessful, <code>AXUIElementCopyActionNames</code> may return one of the following error codes, among others:
+ <dl><dt><code>kAXErrorIllegalArgument</code></dt><dd>One or both of the arguments is an illegal value.</dd>
+ <dt><code>kAXErrorInvalidUIElement</code></dt><dd>The AXUIElementRef is invalid.</dd>
+ <dt><code>kAXErrorFailure</code></dt><dd>There was some sort of system memory failure.</dd>
+ <dt><code>kAXErrorCannotComplete</code></dt><dd>The function cannot complete because messaging has failed in some way.</dd>
+ <dt><code>kAXErrorNotImplemented</code></dt><dd>The process does not fully support the accessibility API.</dd></dl>
+ */
+public func AXUIElementCopyActionNames(_ element: AXUIElement, _ names: UnsafeMutablePointer<CFArray?>) -> AXError
+
+/**
+ @function AXUIElementCopyActionDescription
+ @abstract Returns a localized description of the specified accessibility object's action.
+ 
+ @param element The AXUIElementRef representing the accessibility object.
+ @param action The action to be described.
+ @param description On return, a string containing the description of the action.
+ 
+ @result If unsuccessful, <code>AXUIElementCopyActionDescription</code> may return one of the following error codes, among others:
+ <dl><dt><code>kAXErrorActionUnsupported</code></dt><dd>The specified AXUIElementRef does not support the specified action (you will also receive this error if you pass in the system-wide accessibility object).</dd>
+ <dt><code>kAXErrorIllegalArgument</code></dt><dd>One or more of the arguments is an illegal value.</dd>
+ <dt><code>kAXErrorInvalidUIElement</code></dt><dd>The AXUIElementRef is invalid.</dd>
+ <dt><code>kAXErrorCannotComplete</code></dt><dd>The function cannot complete because messaging has failed in some way.</dd>
+ <dt><code>kAXErrorNotImplemented</code></dt><dd>The process does not fully support the accessibility API.</dd></dl>
+ */
+public func AXUIElementCopyActionDescription(_ element: AXUIElement, _ action: CFString, _ description: UnsafeMutablePointer<CFString?>) -> AXError
+
+/**
+ @function AXUIElementPerformAction
+ @abstract Requests that the specified accessibility object perform the specified action.
+ @discussion It is possible to receive the <code>kAXErrorCannotComplete</code> error code from this function because accessible applications often need to
+ perform some sort of modal processing inside their action callbacks and they may not return within the timeout value set by the accessibility API.
+ This does not necessarily mean that the function has failed, however. If appropriate, your assistive application
+ can try to call this function again. Also, you may be able to increase the timeout value (see @link AXUIElementSetMessagingTimeout AXUIElementSetMessagingTimeout@/link).
+ @param element The AXUIElementRef representing the accessibility object.
+ @param action The action to be performed.
+ 
+ @result If unsuccessful, <code>AXUIElementPerformAction</code> may return one of the following error codes, among others:
+ <dl><dt><code>kAXErrorActionUnsupported</code></dt><dd>The specified AXUIElementRef does not support the specified action (you will also receive this error if you pass in the system-wide accessibility object).</dd>
+ <dt><code>kAXErrorIllegalArgument</code></dt><dd>One or more of the arguments is an illegal value.</dd>
+ <dt><code>kAXErrorInvalidUIElement</code></dt><dd>The AXUIElementRef is invalid.</dd>
+ <dt><code>kAXErrorCannotComplete</code></dt><dd>The function cannot complete because messaging has failed in some way or the application has not yet responded.</dd>
+ <dt><code>kAXErrorNotImplemented</code></dt><dd>The process does not fully support the accessibility API.</dd></dl>
+ */
+public func AXUIElementPerformAction(_ element: AXUIElement, _ action: CFString) -> AXError
+
+/**
+ @function AXUIElementCopyElementAtPosition
+ @abstract Returns the accessibility object at the specified position in top-left relative screen coordinates.
+ 
+ @discussion This function does hit-testing based on window z-order (that is, layering). If one window is on top of another window, the returned accessibility object comes from whichever window is topmost at the specified
+ location. Note that if the system-wide accessibility object is passed in the <code>application</code> parameter, the position test is not restricted to a
+ particular application.
+ 
+ @param application The AXUIElementRef representing the application that contains the screen coordinates (or the system-wide accessibility object).
+ @param x The horizontal position.
+ @param y The vertical position.
+ @param element On return, the accessibility object at the position specified by x and y.
+ 
+ @result If unsuccessful, <code>AXUIElementCopyElementAtPosition</code> may return one of the following error codes, among others:
+ <dl><dt><code>kAXErrorNoValue</code></dt><dd>There is no accessibility object at the specified position.</dd>
+ <dt><code>kAXErrorIllegalArgument</code></dt><dd>One or more of the arguments is an illegal value.</dd>
+ <dt><code>kAXErrorInvalidUIElement</code></dt><dd>The AXUIElementRef is invalid.</dd>
+ <dt><code>kAXErrorCannotComplete</code></dt><dd>The function cannot complete because messaging has failed in some way.</dd>
+ <dt><code>kAXErrorNotImplemented</code></dt><dd>The process does not fully support the accessibility API.</dd></dl>
+ */
+public func AXUIElementCopyElementAtPosition(_ application: AXUIElement, _ x: Float, _ y: Float, _ element: UnsafeMutablePointer<AXUIElement?>) -> AXError
+
+/**
+ @function AXUIElementCreateApplication
+ @abstract Creates and returns the top-level accessibility object for the application with the specified process ID.
+ 
+ @param pid The process ID of an application.
+ @result The AXUIElementRef representing the top-level accessibility object for the application with the specified process ID.
+ */
+public func AXUIElementCreateApplication(_ pid: pid_t) -> AXUIElement
+
+/**
+ @function AXUIElementCreateSystemWide
+ @abstract Returns an accessibility object that provides access to system attributes.
+ @discussion This is useful for things like finding the focused accessibility object regardless of which application is currently active.
+ 
+ @result The AXUIElementRef representing the system-wide accessibility object.
+ */
+public func AXUIElementCreateSystemWide() -> AXUIElement
+
+/**
+ @function AXUIElementGetPid
+ @abstract Returns the process ID associated with the specified accessibility object.
+ 
+ @param element The AXUIElementRef representing an accessibility object.
+ @param pid On return, the process ID associated with the specified accessibility object.
+ 
+ @result If unsuccessful, <code>AXUIElementGetPid</code> may return one of the following error codes, among others:
+ <dl><dt><code>kAXErrorIllegalArgument</code></dt><dd>One or more of the arguments is an illegal value.</dd>
+ <dt><code>kAXErrorInvalidUIElement</code></dt><dd>The AXUIElementRef is invalid.</dd></dl>
+ */
+public func AXUIElementGetPid(_ element: AXUIElement, _ pid: UnsafeMutablePointer<pid_t>) -> AXError
+
+/**
+ @function AXUIElementSetMessagingTimeout
+ @abstract Sets the timeout value used in the accessibility API.
+ @discussion Pass the system-wide accessibility object (see @link AXUIElementCreateSystemWide AXUIElementCreateSystemWide@/link) if you want to set the timeout globally for this process.
+ Setting the timeout on another accessibility object sets it only for that object, not for other accessibility objects that are equal to it.
+ 
+ Setting <code>timeoutInSeconds</code> to 0 for the system-wide accessibility object resets the global timeout to its default value. Setting <code>timeoutInSeconds</code>
+ to 0 for any other accessibility object makes that element use the current global timeout value.
+ 
+ @param element The AXUIElementRef representing an accessibility object.
+ @param timeoutInSeconds The number of seconds for the new timeout value.
+ 
+ @result If unsuccessful, <code>AXUIElementSetMessagingTimeout</code> may return one of the following error codes, among others:
+ <dl><dt><code>kAXErrorIllegalArgument</code></dt><dd>One or more of the arguments is an illegal value (timeout values must be positive).</dd>
+ <dt><code>kAXErrorInvalidUIElement</code></dt><dd>The AXUIElementRef is invalid.</dd></dl>
+ */
+@available(macOS 10.4, *)
+public func AXUIElementSetMessagingTimeout(_ element: AXUIElement, _ timeoutInSeconds: Float) -> AXError
+
+/**
+ @typedef AXTextMarkerRef
+ 
+ @discussion
+ An AXTextMarkerRef is a CFType. Like all CFTypes, they are reference counted (@link //apple_ref/c/func/CFRetain CFRetain@/link, @link //apple_ref/c/func/CFRelease CFRelease@/link).
+ */
+public class AXTextMarker : Hashable {
+}
+
+/**
+ @function AXTextMarkerGetTypeID
+ @abstract Returns the unique type identifier for the AXTextMarkerRef type.
+ 
+ @result Returns the CFTypeID of the AXTextMarkerRef type.
+ */
+public func AXTextMarkerGetTypeID() -> CFTypeID
+
+/**
+ @function AXTextMarkerCreate
+ @abstract Creates a new text marker.
+ 
+ @param bytes The data used to identify this location in text
+ @param length The length of the data
+ */
+public func AXTextMarkerCreate(_ allocator: CFAllocator?, _ bytes: UnsafePointer<UInt8>, _ length: CFIndex) -> AXTextMarker
+
+/**
+ @function AXTextMarkerGetLength
+ @abstract Get the length of bytes stored in a text marker
+ 
+ @param marker The text marker
+  
+ @result The length of the data
+ */
+public func AXTextMarkerGetLength(_ marker: AXTextMarker) -> CFIndex
+
+/**
+ @function AXTextMarkerGetBytePtr
+ @abstract Get the byte data used to identify this location in text.
+ 
+ @param marker The text marker
+  
+ @result a pointer to the byte data used to identify this location in text.
+ */
+public func AXTextMarkerGetBytePtr(_ theTextMarker: AXTextMarker) -> UnsafePointer<UInt8>
+
+/**
+ @typedef AXTextMarkerRangeRef
+ 
+ @discussion
+ An AXTextMarkerRangeRef is a CFType. Like all CFTypes, they are reference counted (@link //apple_ref/c/func/CFRetain CFRetain@/link, @link //apple_ref/c/func/CFRelease CFRelease@/link).
+ */
+public class AXTextMarkerRange : Hashable {
+}
+
+/**
+ @function AXTextMarkerRangeGetTypeID
+ @abstract Returns the unique type identifier for the AXTextMarkerRangeRef type.
+ 
+ @result Returns the CFTypeID of the AXTextMarkerRangeRef type.
+ */
+public func AXTextMarkerRangeGetTypeID() -> CFTypeID
+
+/**
+ @function AXTextMarkerRangeGetTypeID
+ @abstract Creates a new text marker given a start and end marker
+ 
+ @param startMarker The text marker for the beginning of the range
+ @param endMarker The text marker for the end of the range
+
+ @result The text marker range object
+ */
+public func AXTextMarkerRangeCreate(_ allocator: CFAllocator?, _ startMarker: AXTextMarker, _ endMarker: AXTextMarker) -> AXTextMarkerRange
+
+/**
+ @function AXTextMarkerRangeGetTypeID
+ @abstract Creates a new text marker given the bytes for a start marker and an end marker
+ 
+ @param startMarkerBytes The data used to identify the start marker location in text
+ @param startMarkerLength The length of the start marker data
+ @param endMarkeBytes The data used to identify the end marker location in text
+ @param endMarkerLength The length of the end marker data
+ 
+ @result The text marker range object
+ */
+public func AXTextMarkerRangeCreateWithBytes(_ allocator: CFAllocator?, _ startMarkerBytes: UnsafePointer<UInt8>, _ startMarkerLength: CFIndex, _ endMarkerBytes: UnsafePointer<UInt8>, _ endMarkerLength: CFIndex) -> AXTextMarkerRange
+
+/**
+ @function AXTextMarkerRangeCopyStartMarker
+ @abstract Copies the start marker from a text marker range
+ 
+ @param textMarkerRange The text marker range
+ 
+ @result The start text marker object
+ */
+public func AXTextMarkerRangeCopyStartMarker(_ textMarkerRange: AXTextMarkerRange) -> AXTextMarker
+
+/**
+ @function AXTextMarkerRangeCopyEndMarker
+ @abstract Copies the end marker from a text marker range
+ 
+ @param textMarkerRange The text marker range
+ 
+ @result The end text marker object
+ */
+public func AXTextMarkerRangeCopyEndMarker(_ textMarkerRange: AXTextMarkerRange) -> AXTextMarker
+
+/**
+ @typedef AXObserverRef
+ 
+ @discussion
+ An AXObserverRef is a CFType. Like all CFTypes, they are reference counted (@link //apple_ref/c/func/CFRetain CFRetain@/link, @link //apple_ref/c/func/CFRelease CFRelease@/link).
+ */
+public class AXObserver : Hashable {
+}
+
+/**
+ @typedef AXObserverCallback
+ @abstract
+ 
+ @param observer An AXObserverRef object to observe the notifications.
+ @param element The accessibility object.
+ @param notification The name of the notification to observe.
+ @param refcon Application-defined data specified when registering the observer for notification
+ */
+public typealias AXObserverCallback = @convention(c) (AXObserver, AXUIElement, CFString, UnsafeMutableRawPointer?) -> Void
+
+/**
+ @typedef AXObserverCallbackWithInfo
+ @abstract
+     
+ @param observer An AXObserverRef object to observe the notifications.
+ @param element The accessibility object.
+ @param notification The name of the notification to observe.
+ @param info The coresponding notification information.
+ @param refcon Application-defined data specified when registering the observer for notification
+ */
+public typealias AXObserverCallbackWithInfo = @convention(c) (AXObserver, AXUIElement, CFString, CFDictionary, UnsafeMutableRawPointer?) -> Void
+
+/**
+ @function AXObserverGetTypeID
+ @abstract Returns the unique type identifier for the AXObserverRef type.
+ 
+ @result Returns the CFTypeID of the AXObserverRef type.
+ */
+public func AXObserverGetTypeID() -> CFTypeID
+
+/**
+ @function AXObserverCreate
+ @abstract Creates a new observer that can receive notifications from the specified application.
+ @discussion When an observed notification is received, it is passed to @link AXObserverCallback AXObserverCallback@/link.
+ 
+ @param application The process ID of the application.
+ @param callback The callback function.
+ @param outObserver On return, an AXObserverRef representing the observer object.
+ 
+ @result If unsuccessful, <code>AXObserverCreate</code> may return one of the following error codes, among others:
+ <dl><dt><code>kAXErrorIllegalArgument</code></dt><dd>One or more of the arguments is an illegal value.</dd>
+ <dt><code>kAXErrorFailure</code></dt><dd>There is some sort of system memory failure.</dd></dl>
+ */
+public func AXObserverCreate(_ application: pid_t, _ callback: AXObserverCallback, _ outObserver: UnsafeMutablePointer<AXObserver?>) -> AXError
+
+/**
+ @function AXObserverCreateWithInfoCallback
+ @abstract Creates a new observer that can receive notifications with an information dictionary from the specified application.
+ @discussion When an observed notification is received, it is passed to @link AXObserverCallbackWithInfo AXObserverCallbackWithInfo@/link.
+     
+ @param application The process ID of the application.
+ @param callback The callback function.
+ @param outObserver On return, an AXObserverRef representing the observer object.
+     
+ @result If unsuccessful, <code>AXObserverCreateWithInfoCallback</code> may return one of the following error codes, among others:
+     <dl><dt><code>kAXErrorIllegalArgument</code></dt><dd>One or more of the arguments is an illegal value.</dd>
+     <dt><code>kAXErrorFailure</code></dt><dd>There is some sort of system memory failure.</dd></dl>
+*/
+public func AXObserverCreateWithInfoCallback(_ application: pid_t, _ callback: AXObserverCallbackWithInfo, _ outObserver: UnsafeMutablePointer<AXObserver?>) -> AXError
+
+/**
+ @function AXObserverAddNotification
+ @abstract Registers the specified observer to receive notifications from the specified accessibility object.
+ 
+ @param observer The observer object created from a call to @link AXObserverCreate AXObserverCreate@/link.
+ @param element The accessibility object for which to observe notifications.
+ @param notification The name of the notification to observe.
+ @param refcon Application-defined data passed to the callback when it is called.
+ 
+ @result If unsuccessful, <code>AXObserverAddNotification</code> may return one of the following error codes, among others:
+ <dl><dt><code>kAXErrorInvalidUIElementObserver</code></dt><dd>The observer is not a valid AXObserverRef type.</dd>
+ <dt><code>kAXErrorIllegalArgument</code></dt><dd>One or more of the arguments is an illegal value or the length of the notification name is greater than 1024.</dd>
+ <dt><code>kAXErrorNotificationUnsupported</code></dt><dd>The accessibility object does not support notifications (note that the system-wide accessibility object does not support notifications).</dd>
+ <dt><code>kAXErrorNotificationAlreadyRegistered</code></dt><dd>The notification has already been registered.</dd>
+ <dt><code>kAXErrorCannotComplete</code></dt><dd>The function cannot complete because messaging has failed in some way.</dd>
+ <dt><code>kAXErrorFailure</code></dt><dd>There is some sort of system memory failure.</dd></dl>
+ */
+public func AXObserverAddNotification(_ observer: AXObserver, _ element: AXUIElement, _ notification: CFString, _ refcon: UnsafeMutableRawPointer?) -> AXError
+
+/**
+ @function AXObserverRemoveNotification
+ @abstract Removes the specified notification from the list of notifications the observer wants to receive from the accessibility object.
+ 
+ @param observer The observer object created from a call to @link AXObserverCreate AXObserverCreate@/link.
+ @param element The accessibility object for which this observer observes notifications.
+ @param notification The name of the notification to remove from the list of observed notifications.
+ 
+ @result If unsuccessful, <code>AXObserverRemoveNotification</code> may return one of the following error codes, among others:
+ <dl><dt><code>kAXErrorInvalidUIElementObserver</code></dt><dd>The observer is not a valid AXObserverRef type.</dd>
+ <dt><code>kAXErrorIllegalArgument</code></dt><dd>One or more of the arguments is an illegal value or the length of the notification name is greater than 1024.</dd>
+ <dt><code>kAXErrorNotificationUnsupported</code></dt><dd>The accessibility object does not support notifications (note that the system-wide accessibility object does not support notifications).</dd>
+ <dt><code>kAXErrorNotificationNotRegistered</code></dt><dd>This observer has not registered for any notifications.</dd>
+ <dt><code>kAXErrorCannotComplete</code></dt><dd>The function cannot complete because messaging has failed in some way.</dd>
+ <dt><code>kAXErrorFailure</code></dt><dd>There is some sort of system memory failure.</dd></dl>
+ */
+public func AXObserverRemoveNotification(_ observer: AXObserver, _ element: AXUIElement, _ notification: CFString) -> AXError
+
+/**
+ @function AXObserverGetRunLoopSource
+ @abstract Returns the observer's run loop source.
+ @discussion The observer must be added to a run loop before it can receive notifications. Note that releasing the AXObserverRef automatically
+ removes the run loop source from the run loop (you can also do this explicitly by calling @link //apple_ref/c/func/CFRunLoopRemoveSource CFRunLoopRemoveSource@/link).
+ 
+ <code>AXObserverGetRunLoopSource</code> might be used in code in this way:
+ 
+ <pre>
+ CFRunLoopAddSource(CFRunLoopGetCurrent(), AXObserverGetRunLoopSource(observer), kCFRunLoopDefaultMode);
+ </pre>
+ 
+ @param observer The observer object (created from a call to @link AXObserverCreate AXObserverCreate@/link) for which to get the run loop source.
+ @result Returns the CFRunLoopSourceRef of the observer; NIL if you pass NIL in <code>observer</code>.
+ */
+public func AXObserverGetRunLoopSource(_ observer: AXObserver) -> CFRunLoopSource
+

@@ -1,0 +1,329 @@
+import ColorSync
+import CoreGraphics
+import CoreServices
+import CoreText
+import ImageIO
+
+public var kAXRoleAttribute: String { get }
+
+public var kAXSubroleAttribute: String { get }
+
+public var kAXRoleDescriptionAttribute: String { get }
+
+public var kAXHelpAttribute: String { get }
+
+public var kAXTitleAttribute: String { get }
+
+public var kAXValueAttribute: String { get }
+
+public var kAXValueDescriptionAttribute: String { get }
+
+public var kAXMinValueAttribute: String { get }
+
+public var kAXMaxValueAttribute: String { get }
+
+public var kAXValueIncrementAttribute: String { get }
+
+public var kAXAllowedValuesAttribute: String { get }
+
+public var kAXPlaceholderValueAttribute: String { get }
+
+public var kAXEnabledAttribute: String { get }
+
+public var kAXElementBusyAttribute: String { get }
+
+public var kAXFocusedAttribute: String { get }
+
+public var kAXParentAttribute: String { get }
+
+public var kAXChildrenAttribute: String { get }
+
+public var kAXSelectedChildrenAttribute: String { get }
+
+public var kAXVisibleChildrenAttribute: String { get }
+
+public var kAXWindowAttribute: String { get }
+
+public var kAXTopLevelUIElementAttribute: String { get }
+
+public var kAXPositionAttribute: String { get }
+
+public var kAXSizeAttribute: String { get }
+
+public var kAXOrientationAttribute: String { get }
+
+public var kAXDescriptionAttribute: String { get }
+
+public var kAXDescription: String { get }
+
+public var kAXSelectedTextAttribute: String { get }
+
+public var kAXSelectedTextRangeAttribute: String { get }
+
+public var kAXSelectedTextRangesAttribute: String { get }
+
+public var kAXVisibleCharacterRangeAttribute: String { get }
+
+public var kAXNumberOfCharactersAttribute: String { get }
+
+public var kAXSharedTextUIElementsAttribute: String { get }
+
+public var kAXSharedCharacterRangeAttribute: String { get }
+
+public var kAXSharedFocusElementsAttribute: String { get }
+
+public var kAXInsertionPointLineNumberAttribute: String { get }
+
+public var kAXMainAttribute: String { get }
+
+public var kAXMinimizedAttribute: String { get }
+
+public var kAXCloseButtonAttribute: String { get }
+
+public var kAXZoomButtonAttribute: String { get }
+
+public var kAXMinimizeButtonAttribute: String { get }
+
+public var kAXToolbarButtonAttribute: String { get }
+
+public var kAXFullScreenButtonAttribute: String { get }
+
+public var kAXProxyAttribute: String { get }
+
+public var kAXGrowAreaAttribute: String { get }
+
+public var kAXModalAttribute: String { get }
+
+public var kAXDefaultButtonAttribute: String { get }
+
+public var kAXCancelButtonAttribute: String { get }
+
+public var kAXMenuItemCmdCharAttribute: String { get }
+
+public var kAXMenuItemCmdVirtualKeyAttribute: String { get }
+
+public var kAXMenuItemCmdGlyphAttribute: String { get }
+
+public var kAXMenuItemCmdModifiersAttribute: String { get }
+
+public var kAXMenuItemMarkCharAttribute: String { get }
+
+public var kAXMenuItemPrimaryUIElementAttribute: String { get }
+
+/** @typedef AXMenuItemModifiers
+      @abstract Values that indicate the keyboard shortcut modifiers for a menu item (used with the {@link kAXMenuItemCmdModifiersAttribute} attribute).
+ */
+public struct AXMenuItemModifiers : OptionSet, @unchecked Sendable {
+
+    public init(rawValue: UInt32)
+
+    public static var shift: AXMenuItemModifiers { get }
+
+    public static var option: AXMenuItemModifiers { get }
+
+    public static var control: AXMenuItemModifiers { get }
+
+    public static var noCommand: AXMenuItemModifiers { get }
+}
+
+public var kAXMenuBarAttribute: String { get }
+
+public var kAXWindowsAttribute: String { get }
+
+public var kAXFrontmostAttribute: String { get }
+
+public var kAXHiddenAttribute: String { get }
+
+public var kAXMainWindowAttribute: String { get }
+
+public var kAXFocusedWindowAttribute: String { get }
+
+public var kAXFocusedUIElementAttribute: String { get }
+
+public var kAXExtrasMenuBarAttribute: String { get }
+
+public var kAXHeaderAttribute: String { get }
+
+public var kAXEditedAttribute: String { get }
+
+public var kAXValueWrapsAttribute: String { get }
+
+public var kAXTabsAttribute: String { get }
+
+public var kAXTitleUIElementAttribute: String { get }
+
+public var kAXHorizontalScrollBarAttribute: String { get }
+
+public var kAXVerticalScrollBarAttribute: String { get }
+
+public var kAXOverflowButtonAttribute: String { get }
+
+public var kAXFilenameAttribute: String { get }
+
+public var kAXExpandedAttribute: String { get }
+
+public var kAXSelectedAttribute: String { get }
+
+public var kAXSplittersAttribute: String { get }
+
+public var kAXNextContentsAttribute: String { get }
+
+public var kAXDocumentAttribute: String { get }
+
+public var kAXDecrementButtonAttribute: String { get }
+
+public var kAXIncrementButtonAttribute: String { get }
+
+public var kAXPreviousContentsAttribute: String { get }
+
+public var kAXContentsAttribute: String { get }
+
+public var kAXIncrementorAttribute: String { get }
+
+public var kAXHourFieldAttribute: String { get }
+
+public var kAXMinuteFieldAttribute: String { get }
+
+public var kAXSecondFieldAttribute: String { get }
+
+public var kAXAMPMFieldAttribute: String { get }
+
+public var kAXDayFieldAttribute: String { get }
+
+public var kAXMonthFieldAttribute: String { get }
+
+public var kAXYearFieldAttribute: String { get }
+
+public var kAXColumnTitleAttribute: String { get }
+
+public var kAXURLAttribute: String { get }
+
+public var kAXLabelUIElementsAttribute: String { get }
+
+public var kAXLabelValueAttribute: String { get }
+
+public var kAXShownMenuUIElementAttribute: String { get }
+
+public var kAXServesAsTitleForUIElementsAttribute: String { get }
+
+public var kAXLinkedUIElementsAttribute: String { get }
+
+public var kAXRowsAttribute: String { get }
+
+public var kAXVisibleRowsAttribute: String { get }
+
+public var kAXSelectedRowsAttribute: String { get }
+
+public var kAXColumnsAttribute: String { get }
+
+public var kAXVisibleColumnsAttribute: String { get }
+
+public var kAXSelectedColumnsAttribute: String { get }
+
+public var kAXSortDirectionAttribute: String { get }
+
+public var kAXIndexAttribute: String { get }
+
+public var kAXDisclosingAttribute: String { get }
+
+public var kAXDisclosedRowsAttribute: String { get }
+
+public var kAXDisclosedByRowAttribute: String { get }
+
+public var kAXDisclosureLevelAttribute: String { get }
+
+public var kAXMatteHoleAttribute: String { get }
+
+public var kAXMatteContentUIElementAttribute: String { get }
+
+public var kAXMarkerUIElementsAttribute: String { get }
+
+public var kAXUnitsAttribute: String { get }
+
+public var kAXUnitDescriptionAttribute: String { get }
+
+public var kAXMarkerTypeAttribute: String { get }
+
+public var kAXMarkerTypeDescriptionAttribute: String { get }
+
+public var kAXIsApplicationRunningAttribute: String { get }
+
+public var kAXSearchButtonAttribute: String { get }
+
+public var kAXClearButtonAttribute: String { get }
+
+public var kAXFocusedApplicationAttribute: String { get }
+
+public var kAXRowCountAttribute: String { get }
+
+public var kAXColumnCountAttribute: String { get }
+
+public var kAXOrderedByRowAttribute: String { get }
+
+public var kAXWarningValueAttribute: String { get }
+
+public var kAXCriticalValueAttribute: String { get }
+
+public var kAXSelectedCellsAttribute: String { get }
+
+public var kAXVisibleCellsAttribute: String { get }
+
+public var kAXRowHeaderUIElementsAttribute: String { get }
+
+public var kAXColumnHeaderUIElementsAttribute: String { get }
+
+public var kAXRowIndexRangeAttribute: String { get }
+
+public var kAXColumnIndexRangeAttribute: String { get }
+
+public var kAXHorizontalUnitsAttribute: String { get }
+
+public var kAXVerticalUnitsAttribute: String { get }
+
+public var kAXHorizontalUnitDescriptionAttribute: String { get }
+
+public var kAXVerticalUnitDescriptionAttribute: String { get }
+
+public var kAXHandlesAttribute: String { get }
+
+public var kAXTextAttribute: String { get }
+
+public var kAXVisibleTextAttribute: String { get }
+
+public var kAXIsEditableAttribute: String { get }
+
+public var kAXColumnTitlesAttribute: String { get }
+
+public var kAXIdentifierAttribute: String { get }
+
+public var kAXAlternateUIVisibleAttribute: String { get }
+
+public var kAXLineForIndexParameterizedAttribute: String { get }
+
+public var kAXRangeForLineParameterizedAttribute: String { get }
+
+public var kAXStringForRangeParameterizedAttribute: String { get }
+
+public var kAXRangeForPositionParameterizedAttribute: String { get }
+
+public var kAXRangeForIndexParameterizedAttribute: String { get }
+
+public var kAXBoundsForRangeParameterizedAttribute: String { get }
+
+public var kAXRTFForRangeParameterizedAttribute: String { get }
+
+public var kAXAttributedStringForRangeParameterizedAttribute: String { get }
+
+public var kAXStyleRangeForIndexParameterizedAttribute: String { get }
+
+public var kAXCellForColumnAndRowParameterizedAttribute: String { get }
+
+public var kAXLayoutPointForScreenPointParameterizedAttribute: String { get }
+
+public var kAXLayoutSizeForScreenSizeParameterizedAttribute: String { get }
+
+public var kAXScreenPointForLayoutPointParameterizedAttribute: String { get }
+
+public var kAXScreenSizeForLayoutSizeParameterizedAttribute: String { get }
+
+
