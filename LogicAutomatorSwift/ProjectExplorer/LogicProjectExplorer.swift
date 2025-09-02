@@ -68,7 +68,7 @@ class LogicProjectExplorer: ObservableObject {
         log("Found track list")
         
         // 3. Traverse all tracks
-        let discoveredTracks = try await exploreTracks(in: trackList)
+        let discoveredTracks = try await exploreTracks(in: trackList, mainWindow: mainWindow)
         await MainActor.run {
             self.tracks = discoveredTracks
         }
@@ -188,7 +188,7 @@ class LogicProjectExplorer: ObservableObject {
     }
     
     /// Explore all tracks in track list
-    private func exploreTracks(in trackList: AXUIElement) async throws -> [LogicTrack] {
+    private func exploreTracks(in trackList: AXUIElement, mainWindow: AXUIElement) async throws -> [LogicTrack] {
         log("Exploring track list...")
         
         var tracks: [LogicTrack] = []
@@ -212,18 +212,19 @@ class LogicProjectExplorer: ObservableObject {
         }
         log("=== End of child element analysis ===")
         
+        // Now independently explore for regions in the entire window
+        log("=== Starting independent Region exploration ===")
+        try await exploreRegionsIndependently(in: mainWindow)
+        
         // Traverse each child element, look for tracks
         for (index, child) in childrenArray.enumerated() {
             if let track = try await analyzeTrackElement(child, index: index) {
                 tracks.append(track)
                 log("Discovered track \(index): \(track.name)")
                 
-                // Analyze regions within this track
-                try await analyzeRegionsInTrack(track, trackIndex: index)
+                log("Discovered track \(index): \(track.name)")
             } else {
-                // Even if not recognized as a track, analyze its children for regions
-                log("Element \(index) not recognized as track, but analyzing its children for regions...")
-                try await analyzeChildrenForRegions(child, elementIndex: index)
+                log("Element \(index) not recognized as track")
             }
         }
         
@@ -278,124 +279,167 @@ class LogicProjectExplorer: ObservableObject {
         log("  ---")
     }
     
-    /// Analyze regions within a track
-    private func analyzeRegionsInTrack(_ track: LogicTrack, trackIndex: Int) async throws {
-        log("=== Analyzing regions in Track \(trackIndex): \(track.name) ===")
-        
-        // Get children of the track element
-        var children: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(track.element, kAXChildrenAttribute as CFString, &children)
-        
-        guard result == .success, let children = children else {
-            log("  No children found in track")
-            return
-        }
-        
-        let childrenArray = children as! [AXUIElement]
-        log("  Track has \(childrenArray.count) children (potential regions)")
-        
-        // Analyze each child element
-        for (regionIndex, child) in childrenArray.enumerated() {
-            try await analyzeRegionElement(child, regionIndex: regionIndex, trackIndex: trackIndex, trackName: track.name)
-        }
-        
-        log("=== End of region analysis for Track \(trackIndex) ===")
-    }
+
     
-    /// Analyze children of any element for regions
-    private func analyzeChildrenForRegions(_ element: AXUIElement, elementIndex: Int) async throws {
-        // Get children of the element
-        var children: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &children)
+    /// Explore regions independently in the entire window
+    private func exploreRegionsIndependently(in window: AXUIElement) async throws {
+        log("Searching for regions in entire window...")
         
-        guard result == .success, let children = children else {
-            log("Element \(elementIndex) has no children")
-            return
-        }
+        // First, try to find the "Tracks contents" element's siblings that might contain regions
+        log("Looking for Tracks contents element and its siblings...")
+        let tracksContents = try await findTracksContentsElement(in: window, maxDepth: 10)
         
-        let childrenArray = children as! [AXUIElement]
-        log("Element \(elementIndex) contains \(childrenArray.count) children, analyzing for regions...")
+        // Get the parent of Tracks contents to find its siblings
+        var parent: CFTypeRef?
+        let parentResult = AXUIElementCopyAttributeValue(tracksContents, kAXParentAttribute as CFString, &parent)
         
-        // Analyze each child element
-        for (index, child) in childrenArray.enumerated() {
-            try await analyzeRegionElement(child, regionIndex: index, trackIndex: elementIndex, trackName: "Element \(elementIndex)")
-        }
-    }
-    
-    /// Analyze a single region element
-    private func analyzeRegionElement(_ element: AXUIElement, regionIndex: Int, trackIndex: Int, trackName: String) async throws {
-        // Get role
-        var role: CFTypeRef?
-        let roleResult = AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
-        let roleString = (roleResult == .success && role != nil) ? (role as? String ?? "nil") : "nil"
-        
-        // Get title
-        var title: CFTypeRef?
-        let titleResult = AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &title)
-        let titleString = (titleResult == .success && title != nil) ? (title as? String ?? "nil") : "nil"
-        
-        // Get description
-        var description: CFTypeRef?
-        let descResult = AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &description)
-        let descString = (descResult == .success && description != nil) ? (description as? String ?? "nil") : "nil"
-        
-        // Get subrole
-        var subrole: CFTypeRef?
-        let subroleResult = AXUIElementCopyAttributeValue(element, kAXSubroleAttribute as CFString, &subrole)
-        let subroleString = (subroleResult == .success && subrole != nil) ? (subrole as? String ?? "nil") : "nil"
-        
-        // Get identifier
-        var identifier: CFTypeRef?
-        let idResult = AXUIElementCopyAttributeValue(element, kAXIdentifierAttribute as CFString, &identifier)
-        let idString = (idResult == .success && identifier != nil) ? (identifier as? String ?? "nil") : "nil"
-        
-        // Get child count
-        var childCount: CFTypeRef?
-        let childResult = AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &childCount)
-        let childCountString = (childResult == .success && childCount != nil) ? "\((childCount as! [AXUIElement]).count)" : "0"
-        
-        log("  Region \(regionIndex) in Track \(trackIndex) (\(trackName)):")
-        log("    Role: \(roleString)")
-        log("    Title: \(titleString)")
-        log("    Description: \(descString)")
-        log("    Subrole: \(subroleString)")
-        log("    Identifier: \(idString)")
-        log("    Children: \(childCountString)")
-        
-        // Check if this looks like a region
-        if isRegionElement(role: roleString, description: descString, title: titleString) {
-            log("    *** This appears to be a REGION ***")
-        }
-        
-        log("    ---")
-        
-        // Analyze the children of this region
-        try await analyzeRegionChildren(element, regionIndex: regionIndex, trackIndex: trackIndex, trackName: trackName)
-    }
-    
-    /// Analyze the children of a region element
-    private func analyzeRegionChildren(_ element: AXUIElement, regionIndex: Int, trackIndex: Int, trackName: String) async throws {
-        // Get children of the region element
-        var children: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &children)
-        
-        guard result == .success, let children = children else {
-            return
-        }
-        
-        let childrenArray = children as! [AXUIElement]
-        if childrenArray.count > 0 {
-            log("      Region \(regionIndex) has \(childrenArray.count) children:")
+        if parentResult == .success, let parent = parent {
+            let parentElement = parent as! AXUIElement
+            log("Found parent of Tracks contents, searching for region-related siblings...")
             
-            // Analyze each child of the region
-            for (childIndex, child) in childrenArray.enumerated() {
-                try await analyzeRegionChild(child, childIndex: childIndex, regionIndex: regionIndex, trackIndex: trackIndex, trackName: trackName)
+            // Search for regions in the parent's children (siblings of Tracks contents)
+            let regions = try await findRegionElementsInSiblings(parentElement, tracksContents)
+            
+            log("Found \(regions.count) regions in sibling elements:")
+            for (index, region) in regions.enumerated() {
+                try await analyzeIndependentRegion(region, index: index)
+            }
+        } else {
+            log("Could not find parent of Tracks contents, falling back to full window search...")
+            // Fallback: search for elements with CLgViewAccessibilityRegion class or (Region) in description
+            let regions = try await findRegionElements(in: window, maxDepth: 15)
+            
+            log("Found \(regions.count) regions independently:")
+            for (index, region) in regions.enumerated() {
+                try await analyzeIndependentRegion(region, index: index)
             }
         }
     }
     
-    /// Analyze a single child of a region
-    private func analyzeRegionChild(_ element: AXUIElement, childIndex: Int, regionIndex: Int, trackIndex: Int, trackName: String) async throws {
+    /// Find region elements in sibling elements of Tracks contents
+    private func findRegionElementsInSiblings(_ parent: AXUIElement, _ tracksContents: AXUIElement) async throws -> [AXUIElement] {
+        var regions: [AXUIElement] = []
+        
+        // Get all children of the parent
+        var children: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(parent, kAXChildrenAttribute as CFString, &children)
+        
+        if result == .success, let children = children {
+            let childrenArray = children as! [AXUIElement]
+            log("Parent has \(childrenArray.count) children, searching for region-related elements...")
+            
+            for (index, child) in childrenArray.enumerated() {
+                // Skip the Tracks contents element itself
+                if child == tracksContents {
+                    log("Skipping Tracks contents element (index \(index))")
+                    continue
+                }
+                
+                // Check if this sibling element contains regions
+                log("Analyzing sibling element \(index)...")
+                let childRegions = try await findRegionElementsInElement(child, maxDepth: 8)
+                regions.append(contentsOf: childRegions)
+            }
+        }
+        
+        return regions
+    }
+    
+    /// Find region elements recursively in a specific element
+    private func findRegionElementsInElement(_ element: AXUIElement, maxDepth: Int) async throws -> [AXUIElement] {
+        var regions: [AXUIElement] = []
+        
+        if maxDepth <= 0 {
+            return regions
+        }
+        
+        // Check if this element is a region
+        if try await isIndependentRegion(element) {
+            regions.append(element)
+        }
+        
+        // Get children and recursively search
+        var children: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &children)
+        
+        if result == .success, let children = children {
+            let childrenArray = children as! [AXUIElement]
+            for child in childrenArray {
+                let childRegions = try await findRegionElementsInElement(child, maxDepth: maxDepth - 1)
+                regions.append(contentsOf: childRegions)
+            }
+        }
+        
+        return regions
+    }
+    
+    /// Find region elements recursively in the window
+    private func findRegionElements(in element: AXUIElement, maxDepth: Int) async throws -> [AXUIElement] {
+        var regions: [AXUIElement] = []
+        
+        if maxDepth <= 0 {
+            return regions
+        }
+        
+        // Check if this element is a region
+        if try await isIndependentRegion(element) {
+            regions.append(element)
+        }
+        
+        // Get children and recursively search
+        var children: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &children)
+        
+        if result == .success, let children = children {
+            let childrenArray = children as! [AXUIElement]
+            for child in childrenArray {
+                let childRegions = try await findRegionElements(in: child, maxDepth: maxDepth - 1)
+                regions.append(contentsOf: childRegions)
+            }
+        }
+        
+        return regions
+    }
+    
+    /// Check if an element is an independent region
+    private func isIndependentRegion(_ element: AXUIElement) async throws -> Bool {
+        // Check description for (Region) identifier
+        var description: CFTypeRef?
+        let descResult = AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &description)
+        
+        if descResult == .success, let description = description as? String, !description.isEmpty {
+            if description.contains("(Region)") {
+                log("DEBUG: Found region by description: '\(description)'")
+                return true
+            }
+        }
+        
+        // Check identifier for CLgViewAccessibilityRegion
+        var identifier: CFTypeRef?
+        let idResult = AXUIElementCopyAttributeValue(element, kAXIdentifierAttribute as CFString, &identifier)
+        
+        if idResult == .success, let identifier = identifier as? String {
+            if identifier.contains("CLgViewAccessibilityRegion") {
+                log("DEBUG: Found region by identifier: '\(identifier)'")
+                return true
+            }
+        }
+        
+        // Also check for other region indicators
+        var role: CFTypeRef?
+        let roleResult = AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
+        if roleResult == .success, let role = role as? String {
+            if role == "AXLayoutItem" {
+                log("DEBUG: Found potential region by role: '\(role)'")
+                return true
+            }
+        }
+        
+        return false
+    }
+    
+    /// Analyze an independently found region
+    private func analyzeIndependentRegion(_ element: AXUIElement, index: Int) async throws {
         // Get basic attributes
         var role: CFTypeRef?
         let roleResult = AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
@@ -417,12 +461,20 @@ class LogicProjectExplorer: ObservableObject {
         let idResult = AXUIElementCopyAttributeValue(element, kAXIdentifierAttribute as CFString, &identifier)
         let idString = (idResult == .success && identifier != nil) ? (identifier as? String ?? "nil") : "nil"
         
-        var value: CFTypeRef?
-        let valueResult = AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &value)
-        let valueString = (valueResult == .success && value != nil) ? (value as? String ?? "nil") : "nil"
-        
-        log("        Child \(childIndex): Role=\(roleString), Title=\(titleString), Description=\(descString), Subrole=\(subroleString), Identifier=\(idString), Value=\(valueString)")
+        log("  Independent Region \(index):")
+        log("    Role: \(roleString)")
+        log("    Title: \(titleString)")
+        log("    Description: \(descString)")
+        log("    Subrole: \(subroleString)")
+        log("    Identifier: \(idString)")
+        log("    ---")
     }
+    
+    
+    
+
+    
+
     
     /// Check if an element appears to be a region
     private func isRegionElement(role: String, description: String, title: String) -> Bool {
@@ -509,25 +561,9 @@ class LogicProjectExplorer: ObservableObject {
         let descResult = AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &description)
         
         if descResult == .success, let description = description as? String, !description.isEmpty {
-            // Check if description matches track pattern: "Track X "Name""
-            if description.range(of: "Track \\d+ \".*\"", options: .regularExpression) != nil {
-                log("DEBUG: Regex matched: '\(description)'")
-                return true
-            }
-            
-            // Also check if description contains "Track Background" (fallback)
-            if description.contains("Track Background") {
-                log("DEBUG: Track Background found: '\(description)'")
-                return true
-            }
-            
-            // Debug: log what we're checking
-            log("DEBUG: Checking description: '\(description)'")
-            log("DEBUG: Regex pattern: 'Track \\\\d+ \".*\"'")
-            
-            // Try a simpler approach - just check if it starts with "Track" and contains quotes
-            if description.hasPrefix("Track") && description.contains("\"") {
-                log("DEBUG: Simple pattern matched: '\(description)'")
+            // Simple approach: if description starts with "Track", it's a track
+            if description.hasPrefix("Track") {
+                log("DEBUG: Track found by simple prefix check: '\(description)'")
                 return true
             }
         }
