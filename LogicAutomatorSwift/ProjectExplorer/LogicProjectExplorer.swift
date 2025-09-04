@@ -75,11 +75,9 @@ class LogicProjectExplorer: ObservableObject {
         log("Discovered \(discoveredTracks.count) tracks")
         tracks.forEach { print($0) }
         
-        // Test: Randomly select and click a track
+        // Test: Click all tracks one by one
         if !discoveredTracks.isEmpty {
-            let randomIndex = Int.random(in: 0..<discoveredTracks.count)
-            let randomTrack = discoveredTracks[randomIndex]
-            log("Testing: Clicking random track \(randomIndex): \(randomTrack.name)")
+            log("Testing: Clicking all \(discoveredTracks.count) tracks...")
             
             // First, make sure Logic Pro is active
             try await activateLogicPro()
@@ -87,7 +85,19 @@ class LogicProjectExplorer: ObservableObject {
             // Wait a moment for the window to become active
             try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
             
-            try await clickTrack(randomTrack)
+            // Click each track
+            for (index, track) in discoveredTracks.enumerated() {
+                log("=== Testing Track \(index + 1)/\(discoveredTracks.count): \(track.name) ===")
+                try await clickTrack(track)
+                
+                // Rest for 1 second between tracks
+                if index < discoveredTracks.count - 1 {
+                    log("Resting for 1 second before next track...")
+                    try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                }
+            }
+            
+            log("Finished testing all tracks")
         }
         
         // 3. Explore ALL region lists in the window
@@ -1368,8 +1378,6 @@ class LogicProjectExplorer: ObservableObject {
             log("NSWorkspace activate result: \(activateResult)")
         }
         
-        NSApplication.shared.deactivate()
-        
         // Method 3: Try to focus the main window
         try await focusMainWindow()
     }
@@ -1411,8 +1419,14 @@ class LogicProjectExplorer: ObservableObject {
                 let result = AXUIElementPerformAction(track.element, action as CFString)
                 log("Action '\(action)' result: \(result)")
                 
-                // Add a small delay between actions
-                try await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+                // If this action might show a menu or popup, try to dismiss it
+                if action == "AXShowMenu" {
+                    log("Action '\(action)' might show menu/popup, attempting to dismiss...")
+                    try await dismissMenuOrPopup()
+                }
+                
+                // Add a 1 second delay between actions
+                try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
             }
         } else {
             log("Could not get actions for track '\(track.name)'")
@@ -1420,26 +1434,10 @@ class LogicProjectExplorer: ObservableObject {
         
         // Try different approaches to select/click the track
         
-        // Method 1: Try kAXPressAction
-        let pressResult = AXUIElementPerformAction(track.element, kAXPressAction as CFString)
-        log("kAXPressAction result: \(pressResult)")
         
-        // Method 3: Try to set selected attribute
-        let selectedResult = AXUIElementSetAttributeValue(track.element, kAXSelectedAttribute as CFString, true as CFBoolean)
-        log("kAXSelectedAttribute result: \(selectedResult)")
-        
-        // Method 4: Try to set focused attribute
-        let focusResult = AXUIElementSetAttributeValue(track.element, kAXFocusedAttribute as CFString, true as CFBoolean)
-        log("kAXFocusedAttribute result: \(focusResult)")
-        
-        // Method 5: Try to find a clickable child element
+        // Method: Try to find a clickable child element
         try await findAndClickClickableChild(in: track.element, trackName: track.name)
         
-        // Method 6: Try using mouse click at element position
-        try await clickAtElementPosition(track.element, trackName: track.name)
-        
-        // Method 7: Try clicking at a reasonable position based on track index
-        try await clickAtReasonablePosition(track: track)
     }
     
     /// Find and click a clickable child element
@@ -1469,12 +1467,18 @@ class LogicProjectExplorer: ObservableObject {
                             let actionResult = AXUIElementPerformAction(child, action as CFString)
                             log("Child \(index) action '\(action)' result: \(actionResult)")
                             
-                            // Add a small delay between actions
-                            try await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+                            // If this action might show a menu or popup, try to dismiss it
+                            if action == "AXShowMenu" {
+                                log("Child \(index) action '\(action)' might show menu/popup, attempting to dismiss...")
+                                try await dismissMenuOrPopup()
+                            }
+                            
+                            // Add a 1 second delay between actions
+                            try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
                         }
                         
                         // Add a longer delay after trying all actions on this child
-                        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                        try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
                     }
                 }
             }
@@ -1559,6 +1563,28 @@ class LogicProjectExplorer: ObservableObject {
         mouseUpEvent?.post(tap: .cghidEventTap)
         
         log("Posted reasonable position mouse click events at (\(centerX), \(centerY))")
+    }
+    
+    /// Dismiss any open menus or popups
+    private func dismissMenuOrPopup() async throws {
+        log("Attempting to dismiss any open menus or popups...")
+        
+        // Use a simple and clean Escape key method
+        // Create a single keyboard event and post it
+        if let escapeEvent = CGEvent(keyboardEventSource: nil, virtualKey: 53, keyDown: true) {
+            // Post the key down event
+            escapeEvent.post(tap: .cghidEventTap)
+            
+            // Create and post the key up event immediately
+            if let escapeUpEvent = CGEvent(keyboardEventSource: nil, virtualKey: 53, keyDown: false) {
+                escapeUpEvent.post(tap: .cghidEventTap)
+            }
+            
+            log("Posted Escape key events")
+        }
+        
+        // Wait a moment for the dismiss to take effect
+        try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds (reduced)
     }
 }
 
