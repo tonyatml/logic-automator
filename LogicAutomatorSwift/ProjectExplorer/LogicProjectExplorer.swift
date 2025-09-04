@@ -62,43 +62,66 @@ class LogicProjectExplorer: ObservableObject {
         // 1. Get main window
         let mainWindow = try await getMainWindow()
         log("1. Found main window")
+
+        // find elment of "Tracks contents"
+        let tracksContents = try await findTracksContentsElement(in: mainWindow, maxDepth: 10)
+        log("2. Found tracks contents: \(tracksContents)")
+        
+        // Print tracks contents element info and its children
+        try await printElementRoleInfo(tracksContents, elementName: "Tracks Contents")
+        //try await printChildElementsRoleInfo(tracksContents, trackName: "Tracks Contents")
+
+        // find elment of "Tracks header"
+        let tracksHeader = try await findTracksHeaderElement(in: mainWindow, maxDepth: 10)
+        log("3. Found tracks header: \(tracksHeader)")
+        
+        // Print tracks header element info and its children
+        try await printElementRoleInfo(tracksHeader, elementName: "Tracks Header")
+        //try await printChildElementsRoleInfo(tracksHeader, trackName: "Tracks Header")
         
         // 2. Explore track list
-        let trackList = try await findTrackList(in: mainWindow)
-        log("2. Found track list: \(trackList)")
+        //let trackList = try await findTrackList(in: mainWindow)
+        //log("2. Found track list: \(trackList)")
         
         // 3. Traverse all tracks
-        let discoveredTracks = try await exploreTracks(in: trackList, mainWindow: mainWindow)
-        await MainActor.run {
-            self.tracks = discoveredTracks
-        }
-        log("Discovered \(discoveredTracks.count) tracks")
-        tracks.forEach { print($0) }
+        //let discoveredTracks = try await exploreTracks(in: trackList, mainWindow: mainWindow)
+        //await MainActor.run {
+        //    self.tracks = discoveredTracks
+        //}
+        //log("Discovered \(discoveredTracks.count) tracks")
+        //tracks.forEach { print($0) }
         
         // Test: Click all tracks one by one
-        if !discoveredTracks.isEmpty {
-            log("Testing: Clicking all \(discoveredTracks.count) tracks...")
-            
-            // First, make sure Logic Pro is active
-            try await activateLogicPro()
-            
-            // Wait a moment for the window to become active
-            try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
-            
-            // Click each track
-            for (index, track) in discoveredTracks.enumerated() {
-                log("=== Testing Track \(index + 1)/\(discoveredTracks.count): \(track.name) ===")
-                try await clickTrack(track)
-                
-                // Rest for 1 second between tracks
-                if index < discoveredTracks.count - 1 {
-                    log("Resting for 1 second before next track...")
-                    try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-                }
-            }
-            
-            log("Finished testing all tracks")
-        }
+//        if !discoveredTracks.isEmpty {
+//            log("Testing: Clicking all \(discoveredTracks.count) tracks...")
+//            
+//            // First, make sure Logic Pro is active
+//            try await activateLogicPro()
+//            
+//            // Wait a moment for the window to become active
+//            try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+//            
+//            // Click each track
+//            for (index, track) in discoveredTracks.enumerated() {
+//                log("=== Testing Track \(index + 1)/\(discoveredTracks.count): \(track.name) ===")
+//                
+//                // Print track element's AXRole and AXRoleDescription
+//                try await printElementRoleInfo(track.element, elementName: "Track \(index + 1)")
+//                
+//                // Print all child elements' AXRole and AXRoleDescription
+//                try await printChildElementsRoleInfo(track.element, trackName: track.name)
+//                
+//                try await clickTrack(track)
+//                
+//                // Rest for 1 second between tracks
+//                if index < discoveredTracks.count - 1 {
+//                    log("Resting for 1 second before next track...")
+//                    try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+//                }
+//            }
+//            
+//            log("Finished testing all tracks")
+//        }
         
         // 3. Explore ALL region lists in the window
         // log("=== Starting comprehensive Region exploration ===")
@@ -213,31 +236,43 @@ class LogicProjectExplorer: ObservableObject {
         return regionList
     }
     
-    /// Find the "Tracks contents" element that contains the actual tracks
-    private func findTracksContentsElement(in element: AXUIElement, maxDepth: Int) async throws -> AXUIElement {
+    /// Generic function to find elements by description or subrole
+    private func findElementByDescriptionOrSubrole(in element: AXUIElement, 
+                                                  descriptionKeywords: [String] = [], 
+                                                  subroleKeywords: [String] = [], 
+                                                  elementName: String, 
+                                                  maxDepth: Int) async throws -> AXUIElement {
         guard maxDepth > 0 else {
-            throw LogicError.elementNotFound("Tracks contents element not found")
+            throw LogicError.elementNotFound("\(elementName) element not found")
         }
         
-        // Check current element
-        var description: CFTypeRef?
-        let descResult = AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &description)
-        
-        if descResult == .success, let description = description as? String {
-            if description.contains("Tracks contents") {
-                log("Found Tracks contents element with maxDepth: \(maxDepth)")
-                return element
+        // Check current element by description
+        if !descriptionKeywords.isEmpty {
+            var description: CFTypeRef?
+            let descResult = AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &description)
+            
+            if descResult == .success, let description = description as? String {
+                for keyword in descriptionKeywords {
+                    if description.contains(keyword) {
+                        log("Found \(elementName) element by description '\(keyword)' with maxDepth: \(maxDepth)")
+                        return element
+                    }
+                }
             }
         }
         
-        // Also check for the specific class name from Accessibility Inspector
-        var className: CFTypeRef?
-        let classResult = AXUIElementCopyAttributeValue(element, kAXSubroleAttribute as CFString, &className)
-        
-        if classResult == .success, let className = className as? String {
-            if className.contains("ArrangeContentsSectionView") {
-                log("Found ArrangeContentsSectionView element")
-                return element
+        // Check current element by subrole
+        if !subroleKeywords.isEmpty {
+            var subrole: CFTypeRef?
+            let subroleResult = AXUIElementCopyAttributeValue(element, kAXSubroleAttribute as CFString, &subrole)
+            
+            if subroleResult == .success, let subrole = subrole as? String {
+                for keyword in subroleKeywords {
+                    if subrole.contains(keyword) {
+                        log("Found \(elementName) element by subrole '\(keyword)'")
+                        return element
+                    }
+                }
             }
         }
         
@@ -250,14 +285,40 @@ class LogicProjectExplorer: ObservableObject {
             
             for child in childrenArray {
                 do {
-                    return try await findTracksContentsElement(in: child, maxDepth: maxDepth - 1)
+                    return try await findElementByDescriptionOrSubrole(in: child, 
+                                                                      descriptionKeywords: descriptionKeywords, 
+                                                                      subroleKeywords: subroleKeywords, 
+                                                                      elementName: elementName, 
+                                                                      maxDepth: maxDepth - 1)
                 } catch {
                     continue
                 }
             }
         }
         
-        throw LogicError.elementNotFound("Tracks contents element not found")
+        throw LogicError.elementNotFound("\(elementName) element not found")
+    }
+    
+    /// Find the "Tracks contents" element that contains the actual tracks
+    private func findTracksContentsElement(in element: AXUIElement, maxDepth: Int) async throws -> AXUIElement {
+        return try await findElementByDescriptionOrSubrole(
+            in: element,
+            descriptionKeywords: ["Tracks contents"],
+            subroleKeywords: ["ArrangeContentsSectionView"],
+            elementName: "Tracks contents",
+            maxDepth: maxDepth
+        )
+    }
+    
+    /// Find the "Tracks header" element
+    private func findTracksHeaderElement(in element: AXUIElement, maxDepth: Int) async throws -> AXUIElement {
+        return try await findElementByDescriptionOrSubrole(
+            in: element,
+            descriptionKeywords: ["Tracks header", "Track header"],
+            subroleKeywords: [],
+            elementName: "Tracks header",
+            maxDepth: maxDepth
+        )
     }
     
     /// Find the region list element that contains regions
@@ -1358,6 +1419,45 @@ class LogicProjectExplorer: ObservableObject {
     }
     
     // MARK: - Track Operations
+    
+    /// Print element's AXRole, AXRoleDescription, and AXDescription
+    private func printElementRoleInfo(_ element: AXUIElement, elementName: String) async throws {
+        // Get AXRole
+        var role: CFTypeRef?
+        let roleResult = AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
+        let roleString = (roleResult == .success && role != nil) ? (role as? String ?? "nil") : "nil"
+        
+        // Get AXRoleDescription
+        var roleDescription: CFTypeRef?
+        let roleDescResult = AXUIElementCopyAttributeValue(element, kAXRoleDescriptionAttribute as CFString, &roleDescription)
+        let roleDescString = (roleDescResult == .success && roleDescription != nil) ? (roleDescription as? String ?? "nil") : "nil"
+        
+        // Get AXDescription
+        var description: CFTypeRef?
+        let descResult = AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &description)
+        let descString = (descResult == .success && description != nil) ? (description as? String ?? "nil") : "nil"
+        
+        log("\(elementName) - AXRole: \(roleString), AXRoleDescription: \(roleDescString), AXDescription: \(descString)")
+        
+        await printElementDetails(element, index: 0)
+    }
+    
+    /// Print all child elements' AXRole and AXRoleDescription
+    private func printChildElementsRoleInfo(_ element: AXUIElement, trackName: String) async throws {
+        var children: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &children)
+        
+        if result == .success, let children = children {
+            let childrenArray = children as! [AXUIElement]
+            log("Track '\(trackName)' has \(childrenArray.count) child elements:")
+            
+            for (index, child) in childrenArray.enumerated() {
+                try await printElementRoleInfo(child, elementName: "  Child \(index)")
+            }
+        } else {
+            log("Track '\(trackName)' - Could not get child elements")
+        }
+    }
     
     /// Activate Logic Pro application
     private func activateLogicPro() async throws {
