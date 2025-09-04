@@ -61,30 +61,53 @@ class LogicProjectExplorer: ObservableObject {
         
         // 1. Get main window
         let mainWindow = try await getMainWindow()
-        log("Found main window")
+        log("1. Found main window")
         
         // 2. Explore track list
-        //let trackList = try await findTrackList(in: mainWindow)
-        log("Found track list")
+        let trackList = try await findTrackList(in: mainWindow)
+        log("2. Found track list: \(trackList)")
+        
+        // 3. Traverse all tracks
+        let discoveredTracks = try await exploreTracks(in: trackList, mainWindow: mainWindow)
+        await MainActor.run {
+            self.tracks = discoveredTracks
+        }
+        log("Discovered \(discoveredTracks.count) tracks")
+        tracks.forEach { print($0) }
+        
+        // Test: Randomly select and click a track
+        if !discoveredTracks.isEmpty {
+            let randomIndex = Int.random(in: 0..<discoveredTracks.count)
+            let randomTrack = discoveredTracks[randomIndex]
+            log("Testing: Clicking random track \(randomIndex): \(randomTrack.name)")
+            
+            // First, make sure Logic Pro is active
+            try await activateLogicPro()
+            
+            // Wait a moment for the window to become active
+            try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+            
+            try await clickTrack(randomTrack)
+        }
         
         // 3. Explore ALL region lists in the window
-        log("=== Starting comprehensive Region exploration ===")
-        let allRegionLists = try await findAllRegionListElements(in: mainWindow, maxDepth: 15)
+        // log("=== Starting comprehensive Region exploration ===")
+        // let allRegionLists = try await findAllRegionListElements(in: mainWindow, maxDepth: 15)
         
         var allDiscoveredRegions: [LogicRegion] = []
         
-        for (index, regionList) in allRegionLists.enumerated() {
-            log("=== Exploring Region List \(index + 1) ===")
-            
-            // First, print the attributes of this Region List element itself
-            log("Region List \(index + 1) attributes:")
-            try await printElementAttributes(regionList, prefix: "  ")
-            
-            // Then explore it for regions
-            let discoveredRegions = try await exploreRegionsFromList(regionList)
-            allDiscoveredRegions.append(contentsOf: discoveredRegions)
-            log("Region List \(index + 1) contained \(discoveredRegions.count) regions")
-        }
+//        for (index, regionList) in allRegionLists.enumerated() {
+//            log("=== Exploring Region List \(index + 1) ===")
+//            
+//            // First, print the attributes of this Region List element itself
+//            log("Region List \(index + 1) attributes:")
+//            try await printElementAttributes(regionList, prefix: "  ")
+//            
+//            // Then explore it for regions
+//            let discoveredRegions = try await exploreRegionsFromList(regionList)
+//            allDiscoveredRegions.append(contentsOf: discoveredRegions)
+//            log("Region List \(index + 1) contained \(discoveredRegions.count) regions")
+//        }
         
         await MainActor.run {
             self.regions = allDiscoveredRegions
@@ -192,7 +215,7 @@ class LogicProjectExplorer: ObservableObject {
         
         if descResult == .success, let description = description as? String {
             if description.contains("Tracks contents") {
-                log("Found Tracks contents element")
+                log("Found Tracks contents element with maxDepth: \(maxDepth)")
                 return element
             }
         }
@@ -545,7 +568,7 @@ class LogicProjectExplorer: ObservableObject {
         // Debug: Print detailed information about each child element
         log("=== DEBUG: Analyzing all child elements ===")
         for (index, child) in childrenArray.enumerated() {
-            await printElementDetails(child, index: index)
+            // await printElementDetails(child, index: index)
         }
         log("=== End of child element analysis ===")
         
@@ -557,9 +580,7 @@ class LogicProjectExplorer: ObservableObject {
         for (index, child) in childrenArray.enumerated() {
             if let track = try await analyzeTrackElement(child, index: index) {
                 tracks.append(track)
-                log("Discovered track \(index): \(track.name)")
-                
-                log("Discovered track \(index): \(track.name)")
+                log("Discovered track \(index): \(track.name) (Type: \(track.type.rawValue))")
             } else {
                 log("Element \(index) not recognized as track")
             }
@@ -570,50 +591,13 @@ class LogicProjectExplorer: ObservableObject {
     
     /// Print detailed information about an element for debugging
     private func printElementDetails(_ element: AXUIElement, index: Int) async {
-        // Get role
-        var role: CFTypeRef?
-        let roleResult = AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
-        let roleString = (roleResult == .success && role != nil) ? (role as? String ?? "nil") : "nil"
-        
-        // Get title
-        var title: CFTypeRef?
-        let titleResult = AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &title)
-        let titleString = (titleResult == .success && title != nil) ? (title as? String ?? "nil") : "nil"
-        
-        // Get description
-        var description: CFTypeRef?
-        let descResult = AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &description)
-        let descString = (descResult == .success && description != nil) ? (description as? String ?? "nil") : "nil"
-        
-        // Get subrole
-        var subrole: CFTypeRef?
-        let subroleResult = AXUIElementCopyAttributeValue(element, kAXSubroleAttribute as CFString, &subrole)
-        let subroleString = (subroleResult == .success && subrole != nil) ? (subrole as? String ?? "nil") : "nil"
-        
-        // Get identifier
-        var identifier: CFTypeRef?
-        let idResult = AXUIElementCopyAttributeValue(element, kAXIdentifierAttribute as CFString, &identifier)
-        let idString = (idResult == .success && identifier != nil) ? (identifier as? String ?? "nil") : "nil"
-        
-        // Get value
-        var value: CFTypeRef?
-        let valueResult = AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &value)
-        let valueString = (valueResult == .success && value != nil) ? (value as? String ?? "nil") : "nil"
-        
-        // Get child count
-        var childCount: CFTypeRef?
-        let childResult = AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &childCount)
-        let childCountString = (childResult == .success && childCount != nil) ? "\((childCount as! [AXUIElement]).count)" : "0"
-        
-        log("Element \(index):")
-        log("  Role: \(roleString)")
-        log("  Title: \(titleString)")
-        log("  Description: \(descString)")
-        log("  Subrole: \(subroleString)")
-        log("  Identifier: \(idString)")
-        log("  Value: \(valueString)")
-        log("  Children: \(childCountString)")
-        log("  ---")
+        log("=== Element \(index) - All Attributes ===")
+        do {
+            try await printElementAttributes(element, prefix: "  ")
+        } catch {
+            log("  Error printing element attributes: \(error)")
+        }
+        log("=== End Element \(index) ===")
     }
     
 
@@ -1361,6 +1345,220 @@ class LogicProjectExplorer: ObservableObject {
     private func hasSoftwareInstrumentIcon(_ element: AXUIElement) async throws -> Bool {
         // Simplified implementation - actually need to check icon or description
         return false
+    }
+    
+    // MARK: - Track Operations
+    
+    /// Activate Logic Pro application
+    private func activateLogicPro() async throws {
+        log("Activating Logic Pro application...")
+        
+        guard let logicApp = logicApp else {
+            throw LogicError.appNotRunning
+        }
+        
+        // Method 1: Try to bring the app to front using AXUIElement
+        let result = AXUIElementSetAttributeValue(logicApp, kAXFrontmostAttribute as CFString, true as CFBoolean)
+        log("AXUIElementSetAttributeValue frontmost result: \(result)")
+        
+        // Method 2: Use NSWorkspace to activate the app
+        let runningApps = NSWorkspace.shared.runningApplications
+        if let logicApp = runningApps.first(where: { $0.bundleIdentifier == logicBundleID }) {
+            let activateResult = logicApp.activate(options: [.activateIgnoringOtherApps])
+            log("NSWorkspace activate result: \(activateResult)")
+        }
+        
+        NSApplication.shared.deactivate()
+        
+        // Method 3: Try to focus the main window
+        try await focusMainWindow()
+    }
+    
+    /// Focus the main window of Logic Pro
+    private func focusMainWindow() async throws {
+        log("Focusing Logic Pro main window...")
+        
+        let mainWindow = try await getMainWindow()
+        
+        // Try to set the window as the main window
+        let mainResult = AXUIElementSetAttributeValue(mainWindow, kAXMainAttribute as CFString, true as CFBoolean)
+        log("Set main window result: \(mainResult)")
+        
+        // Try to set the window as focused
+        let focusResult = AXUIElementSetAttributeValue(mainWindow, kAXFocusedAttribute as CFString, true as CFBoolean)
+        log("Set window focused result: \(focusResult)")
+        
+        // Try to bring window to front
+        let frontResult = AXUIElementSetAttributeValue(mainWindow, kAXFrontmostAttribute as CFString, true as CFBoolean)
+        log("Set window frontmost result: \(frontResult)")
+    }
+    
+    /// Click on a track element
+    private func clickTrack(_ track: LogicTrack) async throws {
+        log("Attempting to click track: \(track.name)")
+        
+        // First, let's check what actions are available for this element
+        var actions: CFArray?
+        let actionsResult = AXUIElementCopyActionNames(track.element, &actions)
+        
+        if actionsResult == .success, let actions = actions {
+            let actionsArray = actions as! [String]
+            log("Available actions for track '\(track.name)': \(actionsArray)")
+            
+            // Try ALL available actions
+            for action in actionsArray {
+                log("Trying action: \(action)")
+                let result = AXUIElementPerformAction(track.element, action as CFString)
+                log("Action '\(action)' result: \(result)")
+                
+                // Add a small delay between actions
+                try await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+            }
+        } else {
+            log("Could not get actions for track '\(track.name)'")
+        }
+        
+        // Try different approaches to select/click the track
+        
+        // Method 1: Try kAXPressAction
+        let pressResult = AXUIElementPerformAction(track.element, kAXPressAction as CFString)
+        log("kAXPressAction result: \(pressResult)")
+        
+        // Method 3: Try to set selected attribute
+        let selectedResult = AXUIElementSetAttributeValue(track.element, kAXSelectedAttribute as CFString, true as CFBoolean)
+        log("kAXSelectedAttribute result: \(selectedResult)")
+        
+        // Method 4: Try to set focused attribute
+        let focusResult = AXUIElementSetAttributeValue(track.element, kAXFocusedAttribute as CFString, true as CFBoolean)
+        log("kAXFocusedAttribute result: \(focusResult)")
+        
+        // Method 5: Try to find a clickable child element
+        try await findAndClickClickableChild(in: track.element, trackName: track.name)
+        
+        // Method 6: Try using mouse click at element position
+        try await clickAtElementPosition(track.element, trackName: track.name)
+        
+        // Method 7: Try clicking at a reasonable position based on track index
+        try await clickAtReasonablePosition(track: track)
+    }
+    
+    /// Find and click a clickable child element
+    private func findAndClickClickableChild(in element: AXUIElement, trackName: String) async throws {
+        log("Searching for clickable child elements in track: \(trackName)")
+        
+        var children: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &children)
+        
+        if result == .success, let children = children {
+            let childrenArray = children as! [AXUIElement]
+            log("Track '\(trackName)' has \(childrenArray.count) child elements")
+            
+            for (index, child) in childrenArray.enumerated() {
+                // Check if this child is clickable
+                var actions: CFArray?
+                let actionsResult = AXUIElementCopyActionNames(child, &actions)
+                
+                if actionsResult == .success, let actions = actions {
+                    let actionsArray = actions as! [String]
+                    if !actionsArray.isEmpty {
+                        log("Found child \(index) with actions: \(actionsArray)")
+                        
+                        // Try ALL actions for this child
+                        for action in actionsArray {
+                            log("Trying child \(index) action: \(action)")
+                            let actionResult = AXUIElementPerformAction(child, action as CFString)
+                            log("Child \(index) action '\(action)' result: \(actionResult)")
+                            
+                            // Add a small delay between actions
+                            try await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+                        }
+                        
+                        // Add a longer delay after trying all actions on this child
+                        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                    }
+                }
+            }
+        }
+    }
+    
+    /// Click at the element's position using mouse coordinates
+    private func clickAtElementPosition(_ element: AXUIElement, trackName: String) async throws {
+        log("Attempting to click at element position for track: \(trackName)")
+        
+        // Get element position and size
+        let position = try await getElementPosition(element)
+        let size = try await getElementSize(element)
+        
+        log("Element position: \(position), size: \(size)")
+        
+        // Check if size values are reasonable (not corrupted)
+        if size.width > 10000 || size.height > 10000 || size.width < 0 || size.height < 0 {
+            log("Element size appears corrupted, skipping mouse click")
+            return
+        }
+        
+        // Calculate center point
+        let centerX = position.x + size.width / 2
+        let centerY = position.y + size.height / 2
+        
+        log("Clicking at center point: (\(centerX), \(centerY))")
+        
+        // Validate coordinates are reasonable
+        if centerX < 0 || centerY < 0 || centerX > 10000 || centerY > 10000 {
+            log("Calculated coordinates appear invalid, skipping mouse click")
+            return
+        }
+        
+        // Create mouse event at the center of the element
+        let mouseDownEvent = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown, mouseCursorPosition: CGPoint(x: centerX, y: centerY), mouseButton: .left)
+        let mouseUpEvent = CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp, mouseCursorPosition: CGPoint(x: centerX, y: centerY), mouseButton: .left)
+        
+        // Set flags to ensure the event is delivered to the active application
+        mouseDownEvent?.flags = []
+        mouseUpEvent?.flags = []
+        
+        mouseDownEvent?.post(tap: .cghidEventTap)
+        mouseUpEvent?.post(tap: .cghidEventTap)
+        
+        log("Posted mouse click events at (\(centerX), \(centerY))")
+    }
+    
+    /// Click at a reasonable position based on track index
+    private func clickAtReasonablePosition(track: LogicTrack) async throws {
+        log("Attempting to click at reasonable position for track: \(track.name)")
+        
+        // Get element position (this seems to work correctly)
+        let position = try await getElementPosition(track.element)
+        log("Track position: \(position)")
+        
+        // Use a reasonable track height (typically around 16-50 pixels)
+        let reasonableHeight: CGFloat = 30
+        let reasonableWidth: CGFloat = 200
+        
+        // Calculate center point with reasonable dimensions
+        let centerX = position.x + reasonableWidth / 2
+        let centerY = position.y + reasonableHeight / 2
+        
+        log("Clicking at reasonable center point: (\(centerX), \(centerY))")
+        
+        // Validate coordinates
+        if centerX < 0 || centerY < 0 || centerX > 10000 || centerY > 10000 {
+            log("Calculated coordinates appear invalid, skipping reasonable position click")
+            return
+        }
+        
+        // Create mouse event with proper flags to ensure it reaches the active app
+        let mouseDownEvent = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown, mouseCursorPosition: CGPoint(x: centerX, y: centerY), mouseButton: .left)
+        let mouseUpEvent = CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp, mouseCursorPosition: CGPoint(x: centerX, y: centerY), mouseButton: .left)
+        
+        // Set flags to ensure the event is delivered to the active application
+        mouseDownEvent?.flags = []
+        mouseUpEvent?.flags = []
+        
+        mouseDownEvent?.post(tap: .cghidEventTap)
+        mouseUpEvent?.post(tap: .cghidEventTap)
+        
+        log("Posted reasonable position mouse click events at (\(centerX), \(centerY))")
     }
 }
 

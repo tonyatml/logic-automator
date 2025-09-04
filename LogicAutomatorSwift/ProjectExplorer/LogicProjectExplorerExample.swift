@@ -44,13 +44,13 @@ class LogicProjectExplorerExample: ObservableObject {
             try await projectExplorer.exploreProject()
             
             // 2. Display track information
-            await displayTrackInformation()
+            // await displayTrackInformation()
             
             // 3. Display region information
-            await displayRegionInformation()
+            //await displayRegionInformation()
             
             // 4. Perform region operations example
-            await performRegionOperations()
+            // await performRegionOperations()
             
         } catch {
             await MainActor.run {
