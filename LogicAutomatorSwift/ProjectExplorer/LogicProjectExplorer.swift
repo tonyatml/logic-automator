@@ -740,34 +740,13 @@ class LogicProjectExplorer: ObservableObject {
     
     /// Check if an element is an independent region
     private func isIndependentRegion(_ element: AXUIElement) async throws -> Bool {
-        // Check description for (Region) identifier
-        var description: CFTypeRef?
-        let descResult = AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &description)
+        // Check AXRoleDescription for "Region" identifier
+        var roleDescription: CFTypeRef?
+        let roleDescResult = AXUIElementCopyAttributeValue(element, kAXRoleDescriptionAttribute as CFString, &roleDescription)
         
-        if descResult == .success, let description = description as? String, !description.isEmpty {
-            if description.contains("(Region)") {
-                log("DEBUG: Found region by description: '\(description)'")
-                return true
-            }
-        }
-        
-        // Check identifier for CLgViewAccessibilityRegion
-        var identifier: CFTypeRef?
-        let idResult = AXUIElementCopyAttributeValue(element, kAXIdentifierAttribute as CFString, &identifier)
-        
-        if idResult == .success, let identifier = identifier as? String {
-            if identifier.contains("CLgViewAccessibilityRegion") {
-                log("DEBUG: Found region by identifier: '\(identifier)'")
-                return true
-            }
-        }
-        
-        // Also check for other region indicators
-        var role: CFTypeRef?
-        let roleResult = AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
-        if roleResult == .success, let role = role as? String {
-            if role == "AXLayoutItem" {
-                log("DEBUG: Found potential region by role: '\(role)'")
+        if roleDescResult == .success, let roleDescription = roleDescription as? String, !roleDescription.isEmpty {
+            if roleDescription == "Region" {
+                log("DEBUG: Found region by AXRoleDescription: '\(roleDescription)'")
                 return true
             }
         }
@@ -1073,31 +1052,8 @@ class LogicProjectExplorer: ObservableObject {
     
     /// Check if element is a region
     private func isRegionElement(_ element: AXUIElement) async throws -> Bool {
-        var role: CFTypeRef?
-        let roleResult = AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
-        
-        if roleResult == .success, let role = role as? String {
-            // More precise region identification
-            let regionRoles = ["AXGroup", "AXButton"]
-            
-            // Check if it contains region-related properties
-            if regionRoles.contains(role) {
-                // Further validation: check if it has region name or description
-                var title: CFTypeRef?
-                let titleResult = AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &title)
-                
-                if titleResult == .success, let title = title as? String, !title.isEmpty {
-                    // Filter out some non-region elements
-                    if !title.contains("M") && !title.contains("S") && !title.contains("R") && 
-                       !title.contains("I") && !title.contains("dB") && !title.contains("%") &&
-                       !title.contains("Track") {
-                        return true
-                    }
-                }
-            }
-        }
-        
-        return false
+        // Use the same logic as isIndependentRegion for consistency
+        return try await isIndependentRegion(element)
     }
     
     /// Analyze region element
