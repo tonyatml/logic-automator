@@ -79,6 +79,9 @@ class LogicProjectExplorer: ObservableObject {
         try await printElementRoleInfo(tracksHeader, elementName: "Tracks Header")
         //try await printChildElementsRoleInfo(tracksHeader, trackName: "Tracks Header")
         
+        // Test all actions on tracks header children
+        try await testAllActionsOnElement(tracksHeader, elementName: "Tracks Header")
+        
         // 2. Explore track list
         //let trackList = try await findTrackList(in: mainWindow)
         //log("2. Found track list: \(trackList)")
@@ -1456,6 +1459,77 @@ class LogicProjectExplorer: ObservableObject {
             }
         } else {
             log("Track '\(trackName)' - Could not get child elements")
+        }
+    }
+    
+    /// Test all actions on an element and its children
+    private func testAllActionsOnElement(_ element: AXUIElement, elementName: String) async throws {
+        log("=== Testing all actions on \(elementName) and its children ===")
+        
+        // First, make sure Logic Pro is active
+        try await activateLogicPro()
+        
+        // Wait a moment for the window to become active
+        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        
+        // Test actions on the element itself
+        try await testActionsOnSingleElement(element, elementName: elementName)
+        
+        // Get all children and test actions on each
+        var children: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &children)
+        
+        if result == .success, let children = children {
+            let childrenArray = children as! [AXUIElement]
+            log("\(elementName) has \(childrenArray.count) child elements to test")
+            
+            for (index, child) in childrenArray.enumerated() {
+                log("--- Testing Child \(index) of \(elementName) ---")
+                try await testActionsOnSingleElement(child, elementName: "\(elementName) Child \(index)")
+                
+                // Rest for 1 second between children
+                if index < childrenArray.count - 1 {
+                    log("Resting for 1 second before next child...")
+                    try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                }
+            }
+        } else {
+            log("\(elementName) - Could not get child elements")
+        }
+        
+        log("=== Finished testing all actions on \(elementName) ===")
+    }
+    
+    /// Test all actions on a single element
+    private func testActionsOnSingleElement(_ element: AXUIElement, elementName: String) async throws {
+        // Print element info
+        try await printElementRoleInfo(element, elementName: elementName)
+        
+        // Get available actions
+        var actions: CFArray?
+        let actionsResult = AXUIElementCopyActionNames(element, &actions)
+        
+        if actionsResult == .success, let actions = actions {
+            let actionsArray = actions as! [String]
+            log("\(elementName) available actions: \(actionsArray)")
+            
+            // Try ALL available actions
+            for action in actionsArray {
+                log("Trying \(elementName) action: \(action)")
+                let result = AXUIElementPerformAction(element, action as CFString)
+                log("\(elementName) action '\(action)' result: \(result)")
+                
+                // If this action might show a menu or popup, try to dismiss it
+                if action == "AXShowMenu" {
+                    log("\(elementName) action '\(action)' might show menu/popup, attempting to dismiss...")
+                    try await dismissMenuOrPopup()
+                }
+                
+                // Add a 1 second delay between actions
+                try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+            }
+        } else {
+            log("\(elementName) - Could not get actions")
         }
     }
     
