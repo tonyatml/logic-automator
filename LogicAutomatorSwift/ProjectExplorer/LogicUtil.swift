@@ -58,31 +58,28 @@ class LogicUtil {
     }
     
     /// Get all track elements from Tracks contents
-    static func getTrackElements(from tracksContents: AXUIElement, logCallback: ((String) -> Void)? = nil) async throws -> [AXUIElement] {
-        var children: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(tracksContents, kAXChildrenAttribute as CFString, &children)
-        
-        if result == .success, let children = children {
-            let childrenArray = children as! [AXUIElement]
-            logCallback?("Found \(childrenArray.count) track elements in Tracks contents")
-            return childrenArray
-        } else {
-            logCallback?("Failed to get children from Tracks contents")
-            return []
-        }
+    static func getTrackElements(_ mainWindow: AXUIElement, logCallback: ((String) -> Void)? = nil) async throws -> [AXUIElement] {
+        let tracksContents = try await findTracksContentsElement(in: mainWindow, maxDepth: 10)
+        return try await getChildrenElements(from: tracksContents, elementType: "track", logCallback: logCallback)
+    }
+
+    /// Get all header elements from Tracks header
+    static func getHeaderElements(_ mainWindow: AXUIElement, logCallback: ((String) -> Void)? = nil) async throws -> [AXUIElement] {
+        let tracksHeader = try await findTracksHeaderElement(in: mainWindow, maxDepth: 10)
+        return try await getChildrenElements(from: tracksHeader, elementType: "header", logCallback: logCallback)
     }
     
-    /// Get all region elements from Tracks header
-    static func getRegionElements(from tracksHeader: AXUIElement, logCallback: ((String) -> Void)? = nil) async throws -> [AXUIElement] {
+    /// Generic function to get children elements from a parent element
+    static func getChildrenElements(from parentElement: AXUIElement, elementType: String, logCallback: ((String) -> Void)? = nil) async throws -> [AXUIElement] {
         var children: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(tracksHeader, kAXChildrenAttribute as CFString, &children)
+        let result = AXUIElementCopyAttributeValue(parentElement, kAXChildrenAttribute as CFString, &children)
         
         if result == .success, let children = children {
             let childrenArray = children as! [AXUIElement]
-            logCallback?("Found \(childrenArray.count) region elements in Tracks header")
+            logCallback?("Found \(childrenArray.count) \(elementType) elements")
             return childrenArray
         } else {
-            logCallback?("Failed to get children from Tracks header")
+            logCallback?("Failed to get children from \(elementType) parent element")
             return []
         }
     }
