@@ -43,15 +43,6 @@ class LogicProjectExplorerExample: ObservableObject {
             // 1. Explore project
             try await projectExplorer.exploreProject()
             
-            // 2. Display track information
-            // await displayTrackInformation()
-            
-            // 3. Display region information
-            //await displayRegionInformation()
-            
-            // 4. Perform region operations example
-            // await performRegionOperations()
-            
         } catch {
             await MainActor.run {
                 explorationResults += "Error: \(error.localizedDescription)\n"
@@ -60,52 +51,6 @@ class LogicProjectExplorerExample: ObservableObject {
         
         await MainActor.run {
             isExploring = false
-        }
-    }
-    
-    /// Display track information
-    private func displayTrackInformation() async {
-        await MainActor.run {
-            explorationResults += "\n=== Track Information ===\n"
-            
-            for track in projectExplorer.tracks {
-                explorationResults += "Track \(track.index): \(track.name)\n"
-                explorationResults += "  Type: \(track.type.rawValue)\n"
-                explorationResults += "  Position: \(track.position)\n"
-                explorationResults += "  Size: \(track.size)\n"
-                explorationResults += "  Property Count: \(track.properties.count)\n"
-                
-                // Display some important properties
-                for (key, value) in track.properties {
-                    if key.contains("Title") || key.contains("Value") || key.contains("Description") {
-                        explorationResults += "    \(key): \(value)\n"
-                    }
-                }
-                explorationResults += "\n"
-            }
-        }
-    }
-    
-    /// Display region information
-    private func displayRegionInformation() async {
-        await MainActor.run {
-            explorationResults += "\n=== Region Information ===\n"
-            
-            for region in projectExplorer.regions {
-                explorationResults += "Region \(region.regionIndex) (Track \(region.trackIndex)): \(region.name)\n"
-                explorationResults += "  Type: \(region.type.rawValue)\n"
-                explorationResults += "  Position: \(region.position)\n"
-                explorationResults += "  Size: \(region.size)\n"
-                explorationResults += "  Property Count: \(region.properties.count)\n"
-                
-                // Display some important properties
-                for (key, value) in region.properties {
-                    if key.contains("Title") || key.contains("Value") || key.contains("Description") {
-                        explorationResults += "    \(key): \(value)\n"
-                    }
-                }
-                explorationResults += "\n"
-            }
         }
     }
     
