@@ -129,37 +129,37 @@ class LogicUtil {
             
             // Try multiple methods to set the value
             // Method 1: Try kAXValueAttribute
-            let setValueResult = AXUIElementSetAttributeValue(textField, kAXValueAttribute as CFString, newValue as CFString)
-            logCallback?("Set value via kAXValueAttribute result: \(setValueResult)")
+            //let setValueResult = AXUIElementSetAttributeValue(textField, kAXValueAttribute as CFString, newValue as CFString)
+            //logCallback?("Set value via kAXValueAttribute result: \(setValueResult)")
             
             // Method 2: Try kAXTitleAttribute
-            let setTitleResult = AXUIElementSetAttributeValue(textField, kAXTitleAttribute as CFString, newValue as CFString)
-            logCallback?("Set value via kAXTitleAttribute result: \(setTitleResult)")
+            //let setTitleResult = AXUIElementSetAttributeValue(textField, kAXTitleAttribute as CFString, newValue as CFString)
+            //logCallback?("Set value via kAXTitleAttribute result: \(setTitleResult)")
             
             // Method 3: Try kAXDescriptionAttribute (since we can read from it)
-            let setDescResult = AXUIElementSetAttributeValue(textField, kAXDescriptionAttribute as CFString, newValue as CFString)
-            logCallback?("Set value via kAXDescriptionAttribute result: \(setDescResult)")
+            //let setDescResult = AXUIElementSetAttributeValue(textField, kAXDescriptionAttribute as CFString, newValue as CFString)
+            //logCallback?("Set value via kAXDescriptionAttribute result: \(setDescResult)")
             
             // Verify if description was changed
-            if setDescResult == .success {
-                var verifyDesc: CFTypeRef?
-                let verifyDescResult = AXUIElementCopyAttributeValue(textField, kAXDescriptionAttribute as CFString, &verifyDesc)
-                if verifyDescResult == .success, let verifyDesc = verifyDesc as? String {
-                    logCallback?("Verified description after change: '\(verifyDesc)'")
-                }
-            }
+            //if setDescResult == .success {
+            //    var verifyDesc: CFTypeRef?
+            //    let verifyDescResult = AXUIElementCopyAttributeValue(textField, kAXDescriptionAttribute as CFString, &verifyDesc)
+            //    if verifyDescResult == .success, let verifyDesc = verifyDesc as? String {
+            //        logCallback?("Verified description after change: '\(verifyDesc)'")
+            //    }
+            //}
             
             // Method 3: Try focusing first, then setting
-            logCallback?("Attempting to focus the text field...")
-            let focusResult = AXUIElementSetAttributeValue(textField, kAXFocusedAttribute as CFString, true as CFBoolean)
-            logCallback?("Focus result: \(focusResult)")
+            //logCallback?("Attempting to focus the text field...")
+            //let focusResult = AXUIElementSetAttributeValue(textField, kAXFocusedAttribute as CFString, true as CFBoolean)
+            //logCallback?("Focus result: \(focusResult)")
             
             // Wait a moment for focus to take effect
             try await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
             
             // Try setting value again after focusing
-            let setValueAfterFocusResult = AXUIElementSetAttributeValue(textField, kAXValueAttribute as CFString, newValue as CFString)
-            logCallback?("Set value after focus result: \(setValueAfterFocusResult)")
+            //let setValueAfterFocusResult = AXUIElementSetAttributeValue(textField, kAXValueAttribute as CFString, newValue as CFString)
+            //logCallback?("Set value after focus result: \(setValueAfterFocusResult)")
             
             // Method 4: Try using actions
             logCallback?("Trying to use actions to modify text field...")
@@ -232,6 +232,7 @@ class LogicUtil {
         
         // First, make sure the element is focused
         let focusResult = AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, true as CFBoolean)
+        //u3
         logCallback?("Focus result before sending text: \(focusResult)")
         
         // Wait a moment for focus
