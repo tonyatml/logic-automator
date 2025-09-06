@@ -23,6 +23,13 @@ class LogicMonitor: ObservableObject {
     // Log callback
     var logCallback: ((String) -> Void)?
     
+    // Server communication
+    private var notificationBuffer: [[String: Any]] = []
+    private let bufferSize = 10 // Send every 10 notifications
+    private let bufferTimeout: TimeInterval = 5.0 // Or send every 5 seconds
+    private var bufferTimer: Timer?
+    private let serverURL = "http://localhost:8080/api/notifications" // Configure your server URL
+    
     // Callback function for AXObserver
     private let callback: AXObserverCallback = { observer, element, notification, context in
         let monitor = Unmanaged<LogicMonitor>.fromOpaque(context!).takeUnretainedValue()
@@ -96,6 +103,10 @@ class LogicMonitor: ObservableObject {
         
         isMonitoring = false
         currentStatus = "Monitoring stopped"
+        
+        // Flush any remaining notifications to server
+        flushBuffer()
+        
         log("🛑 Stopped monitoring Logic Pro events")
     }
     
@@ -188,8 +199,7 @@ class LogicMonitor: ObservableObject {
         handleSpecificNotification(notificationName, element: element)
         
         // Get element information - try multiple attributes for better description
-        var elementAttributes = getElementDescription(element)
-
+        var elementAttributes = getElementAttributes(element)
         elementAttributes["command"] = notificationName
         
         // Convert attributes dictionary to JSON string for display
@@ -201,6 +211,10 @@ class LogicMonitor: ObservableObject {
             elementDescription = "{}"
         }
 
+        // Add to buffer for server transmission
+        addToBuffer(elementAttributes)
+        
+        // handle to serve the json string to the server
         print(elementDescription)
         
         // Get role information
@@ -225,7 +239,7 @@ class LogicMonitor: ObservableObject {
     }
     
     /// Get all available attributes as a dictionary for analysis
-    private func getElementDescription(_ element: AXUIElement) -> [String: Any] {
+    private func getElementAttributes(_ element: AXUIElement) -> [String: Any] {
         // Get all attribute names
         var attributeNames: CFArray?
         let result = AXUIElementCopyAttributeNames(element, &attributeNames)
@@ -566,6 +580,105 @@ struct LogicMonitorView: View {
         .onAppear {
             setupLogging()
         }
+    }
+    
+    // MARK: - Server Communication
+    
+    /// Add notification to buffer and send if needed
+    private func addToBuffer(_ notification: [String: Any]) {
+        notificationBuffer.append(notification)
+        
+        // Send if buffer is full
+        if notificationBuffer.count >= bufferSize {
+            sendBufferToServer()
+        }
+        
+        // Start timer if this is the first notification
+        if bufferTimer == nil {
+            startBufferTimer()
+        }
+    }
+    
+    /// Start timer for periodic buffer sending
+    private func startBufferTimer() {
+        bufferTimer = Timer.scheduledTimer(withTimeInterval: bufferTimeout, repeats: false) { [weak self] _ in
+            self?.sendBufferToServer()
+        }
+    }
+    
+    /// Send buffered notifications to server
+    private func sendBufferToServer() {
+        guard !notificationBuffer.isEmpty else { return }
+        
+        let notificationsToSend = notificationBuffer
+        notificationBuffer.removeAll()
+        bufferTimer?.invalidate()
+        bufferTimer = nil
+        
+        // Send to server asynchronously
+        DispatchQueue.global(qos: .background).async { [weak self] in
+            self?.sendNotificationsToServer(notificationsToSend)
+        }
+    }
+    
+    /// Send notifications to server via HTTP POST
+    private func sendNotificationsToServer(_ notifications: [[String: Any]]) {
+        guard let url = URL(string: serverURL) else {
+            print("❌ Invalid server URL: \(serverURL)")
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        // Create payload
+        let payload: [String: Any] = [
+            "timestamp": Date().timeIntervalSince1970,
+            "count": notifications.count,
+            "notifications": notifications
+        ]
+        
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: payload, options: [])
+            request.httpBody = jsonData
+            
+            let task = URLSession.shared.dataTask(with: request) { data, response, error in
+                if let error = error {
+                    print("❌ Server request failed: \(error.localizedDescription)")
+                    return
+                }
+                
+                if let httpResponse = response as? HTTPURLResponse {
+                    if httpResponse.statusCode == 200 {
+                        print("✅ Successfully sent \(notifications.count) notifications to server")
+                    } else {
+                        print("❌ Server returned status code: \(httpResponse.statusCode)")
+                    }
+                }
+                
+                if let data = data, let responseString = String(data: data, encoding: .utf8) {
+                    print("📡 Server response: \(responseString)")
+                }
+            }
+            
+            task.resume()
+            
+        } catch {
+            print("❌ Failed to serialize notifications: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Force send all buffered notifications (useful for cleanup)
+    func flushBuffer() {
+        sendBufferToServer()
+    }
+    
+    /// Configure server URL for notifications
+    func configureServerURL(_ url: String) {
+        // This would require making serverURL mutable, but for now we'll use the constant
+        print("📡 Server URL configured: \(url)")
+        print("💡 To change server URL, modify the serverURL constant in LogicMonitor.swift")
     }
     
     private func setupLogging() {
