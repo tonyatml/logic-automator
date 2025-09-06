@@ -215,7 +215,7 @@ class LogicMonitor: ObservableObject {
         addToBuffer(elementAttributes)
         
         // handle to serve the json string to the server
-        print(elementDescription)
+        // print(elementDescription)
         
         // Get role information
         var role: CFTypeRef?
@@ -476,6 +476,105 @@ class LogicMonitor: ObservableObject {
         print("[LogicMonitor] \(message)")
         logCallback?(message)
     }
+    
+    // MARK: - Server Communication
+    
+    /// Add notification to buffer and send if needed
+    private func addToBuffer(_ notification: [String: Any]) {
+        notificationBuffer.append(notification)
+        
+        // Send if buffer is full
+        if notificationBuffer.count >= bufferSize {
+            sendBufferToServer()
+        }
+        
+        // Start timer if this is the first notification
+        if bufferTimer == nil {
+            startBufferTimer()
+        }
+    }
+    
+    /// Start timer for periodic buffer sending
+    private func startBufferTimer() {
+        bufferTimer = Timer.scheduledTimer(withTimeInterval: bufferTimeout, repeats: false) { [weak self] _ in
+            self?.sendBufferToServer()
+        }
+    }
+    
+    /// Send buffered notifications to server
+    private func sendBufferToServer() {
+        guard !notificationBuffer.isEmpty else { return }
+        
+        let notificationsToSend = notificationBuffer
+        notificationBuffer.removeAll()
+        bufferTimer?.invalidate()
+        bufferTimer = nil
+        
+        // Send to server asynchronously
+        DispatchQueue.global(qos: .background).async { [weak self] in
+            self?.sendNotificationsToServer(notificationsToSend)
+        }
+    }
+    
+    /// Send notifications to server via HTTP POST
+    private func sendNotificationsToServer(_ notifications: [[String: Any]]) {
+        guard let url = URL(string: serverURL) else {
+            print("❌ Invalid server URL: \(serverURL)")
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        // Create payload
+        let payload: [String: Any] = [
+            "timestamp": Date().timeIntervalSince1970,
+            "count": notifications.count,
+            "notifications": notifications
+        ]
+        
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: payload, options: [])
+            request.httpBody = jsonData
+            
+            let task = URLSession.shared.dataTask(with: request) { data, response, error in
+                if let error = error {
+                    print("❌ Server request failed: \(error.localizedDescription)")
+                    return
+                }
+                
+                if let httpResponse = response as? HTTPURLResponse {
+                    if httpResponse.statusCode == 200 {
+                        print("✅ Successfully sent \(notifications.count) notifications to server")
+                    } else {
+                        print("❌ Server returned status code: \(httpResponse.statusCode)")
+                    }
+                }
+                
+                if let data = data, let responseString = String(data: data, encoding: .utf8) {
+                    print("📡 Server response: \(responseString)")
+                }
+            }
+            
+            task.resume()
+            
+        } catch {
+            print("❌ Failed to serialize notifications: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Force send all buffered notifications (useful for cleanup)
+    func flushBuffer() {
+        sendBufferToServer()
+    }
+    
+    /// Configure server URL for notifications
+    func configureServerURL(_ url: String) {
+        // This would require making serverURL mutable, but for now we'll use the constant
+        print("📡 Server URL configured: \(url)")
+        print("💡 To change server URL, modify the serverURL constant in LogicMonitor.swift")
+    }
 }
 
 // MARK: - SwiftUI Integration
@@ -580,105 +679,6 @@ struct LogicMonitorView: View {
         .onAppear {
             setupLogging()
         }
-    }
-    
-    // MARK: - Server Communication
-    
-    /// Add notification to buffer and send if needed
-    private func addToBuffer(_ notification: [String: Any]) {
-        notificationBuffer.append(notification)
-        
-        // Send if buffer is full
-        if notificationBuffer.count >= bufferSize {
-            sendBufferToServer()
-        }
-        
-        // Start timer if this is the first notification
-        if bufferTimer == nil {
-            startBufferTimer()
-        }
-    }
-    
-    /// Start timer for periodic buffer sending
-    private func startBufferTimer() {
-        bufferTimer = Timer.scheduledTimer(withTimeInterval: bufferTimeout, repeats: false) { [weak self] _ in
-            self?.sendBufferToServer()
-        }
-    }
-    
-    /// Send buffered notifications to server
-    private func sendBufferToServer() {
-        guard !notificationBuffer.isEmpty else { return }
-        
-        let notificationsToSend = notificationBuffer
-        notificationBuffer.removeAll()
-        bufferTimer?.invalidate()
-        bufferTimer = nil
-        
-        // Send to server asynchronously
-        DispatchQueue.global(qos: .background).async { [weak self] in
-            self?.sendNotificationsToServer(notificationsToSend)
-        }
-    }
-    
-    /// Send notifications to server via HTTP POST
-    private func sendNotificationsToServer(_ notifications: [[String: Any]]) {
-        guard let url = URL(string: serverURL) else {
-            print("❌ Invalid server URL: \(serverURL)")
-            return
-        }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        // Create payload
-        let payload: [String: Any] = [
-            "timestamp": Date().timeIntervalSince1970,
-            "count": notifications.count,
-            "notifications": notifications
-        ]
-        
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: payload, options: [])
-            request.httpBody = jsonData
-            
-            let task = URLSession.shared.dataTask(with: request) { data, response, error in
-                if let error = error {
-                    print("❌ Server request failed: \(error.localizedDescription)")
-                    return
-                }
-                
-                if let httpResponse = response as? HTTPURLResponse {
-                    if httpResponse.statusCode == 200 {
-                        print("✅ Successfully sent \(notifications.count) notifications to server")
-                    } else {
-                        print("❌ Server returned status code: \(httpResponse.statusCode)")
-                    }
-                }
-                
-                if let data = data, let responseString = String(data: data, encoding: .utf8) {
-                    print("📡 Server response: \(responseString)")
-                }
-            }
-            
-            task.resume()
-            
-        } catch {
-            print("❌ Failed to serialize notifications: \(error.localizedDescription)")
-        }
-    }
-    
-    /// Force send all buffered notifications (useful for cleanup)
-    func flushBuffer() {
-        sendBufferToServer()
-    }
-    
-    /// Configure server URL for notifications
-    func configureServerURL(_ url: String) {
-        // This would require making serverURL mutable, but for now we'll use the constant
-        print("📡 Server URL configured: \(url)")
-        print("💡 To change server URL, modify the serverURL constant in LogicMonitor.swift")
     }
     
     private func setupLogging() {
