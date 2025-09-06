@@ -13,7 +13,7 @@ struct ProjectExplorerView: View {
                     .font(.title2)
                     .foregroundColor(.blue)
                 
-                Text("Logic Pro Project Explorer")
+                Text("Logic Pro Explorer")
                     .font(.title2)
                     .fontWeight(.bold)
                 
@@ -60,7 +60,7 @@ struct ProjectExplorerView: View {
                         .foregroundColor(.white)
                         .cornerRadius(6)
                     }
-                    .disabled(!monitor.isMonitoring)
+                    .disabled(!monitor.isMonitoring)           
                 }
                 
                 Button(action: {
@@ -131,6 +131,40 @@ struct ProjectExplorerView: View {
                     
                     Text(monitor.isMonitoring ? "Monitoring Active" : "Monitoring Inactive")
                         .font(.subheadline)
+                    
+                    Spacer()
+                    
+                    // Session recording status
+                    let sessionStats = monitor.getSessionStats()
+                    if let recordingEnabled = sessionStats["recordingEnabled"] as? Bool, recordingEnabled {
+                        Circle()
+                            .fill(Color.orange)
+                            .frame(width: 12, height: 12)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Session Recording")
+                                .font(.subheadline)
+                                .foregroundColor(.orange)
+                            
+                            if let notificationCount = sessionStats["notificationCount"] as? Int {
+                                Text("\(notificationCount) notifications")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            if let filePath = monitor.getSessionFilePath() {
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text("File: \(URL(fileURLWithPath: filePath).lastPathComponent)")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                    
+                                    Text("Location: ~/Documents/")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                    }
                 }
                 .padding()
                 .background(Color(NSColor.controlBackgroundColor))

@@ -30,6 +30,13 @@ class LogicMonitor: ObservableObject {
     private var bufferTimer: Timer?
     private let serverURL = "http://localhost:8080/api/notifications" // Configure your server URL
     
+    // Session recording
+    private var sessionNotifications: [[String: Any]] = []
+    private var sessionStartTime: Date?
+    private var sessionRecordingEnabled = true
+    private var sessionFileURL: URL?
+    private let maxMemoryNotifications = 1000 // Keep only last 1000 notifications in memory
+    
     // Callback function for AXObserver
     private let callback: AXObserverCallback = { observer, element, notification, context in
         let monitor = Unmanaged<LogicMonitor>.fromOpaque(context!).takeUnretainedValue()
@@ -89,6 +96,11 @@ class LogicMonitor: ObservableObject {
         isMonitoring = true
         currentStatus = "Monitoring Logic Pro events"
         log("✅ Started monitoring Logic Pro events")
+        
+        // Start session recording if enabled
+        if sessionRecordingEnabled {
+            startSessionRecording()
+        }
     }
     
     /// Stop monitoring
@@ -106,6 +118,11 @@ class LogicMonitor: ObservableObject {
         
         // Flush any remaining notifications to server
         flushBuffer()
+        
+        // End session recording if enabled
+        if sessionRecordingEnabled {
+            endSessionRecording()
+        }
         
         log("🛑 Stopped monitoring Logic Pro events")
     }
@@ -210,9 +227,13 @@ class LogicMonitor: ObservableObject {
         } catch {
             elementDescription = "{}"
         }
-
-        // Add to buffer for server transmission
-        addToBuffer(elementAttributes)
+        
+        // Add to session recording if enabled
+        if sessionRecordingEnabled {
+            addToSessionRecording(elementAttributes)
+        } else {
+            addToBuffer(elementAttributes)
+        }
         
         // handle to serve the json string to the server
         // print(elementDescription)
@@ -256,36 +277,11 @@ class LogicMonitor: ObservableObject {
             let valueResult = AXUIElementCopyAttributeValue(element, name as CFString, &value)
             
             if valueResult == .success {
-                if let stringValue = value as? String {
-                    attributesDict[name] = stringValue
-                } else if let numberValue = value as? NSNumber {
-                    attributesDict[name] = numberValue
-                } else if let boolValue = value as? Bool {
-                    attributesDict[name] = boolValue
-                } else if let arrayValue = value as? [Any] {
-                    // Filter array to only include JSON-serializable values
-                    let filteredArray = arrayValue.compactMap { item in
-                        if item is String || item is NSNumber || item is Bool {
-                            return item
-                        } else {
-                            return String(describing: item)
-                        }
-                    }
-                    attributesDict[name] = filteredArray
-                } else if let dictValue = value as? [String: Any] {
-                    // Filter dictionary to only include JSON-serializable values
-                    var filteredDict: [String: Any] = [:]
-                    for (key, val) in dictValue {
-                        if val is String || val is NSNumber || val is Bool {
-                            filteredDict[key] = val
-                        } else {
-                            filteredDict[key] = String(describing: val)
-                        }
-                    }
-                    attributesDict[name] = filteredDict
+                // Convert CFTypeRef to JSON-serializable types
+                if let convertedValue = convertCFTypeToJSONSerializable(value) {
+                    attributesDict[name] = convertedValue
                 } else {
-                    // Convert non-serializable types to string
-                    attributesDict[name] = String(describing: value)
+                    attributesDict[name] = "Unsupported type: \(type(of: value))"
                 }
             } else {
                 attributesDict[name] = "Error: \(valueResult.rawValue)"
@@ -293,6 +289,60 @@ class LogicMonitor: ObservableObject {
         }
         
         return attributesDict
+    }
+    
+    /// Convert CFTypeRef to JSON-serializable types to avoid NSObject warnings
+    private func convertCFTypeToJSONSerializable(_ value: CFTypeRef?) -> Any? {
+        guard let value = value else { return nil }
+        
+        // Handle basic types
+        if let stringValue = value as? String {
+            return stringValue
+        } else if let numberValue = value as? NSNumber {
+            return numberValue
+        } else if let boolValue = value as? Bool {
+            return boolValue
+        } else if CFGetTypeID(value) == CFArrayGetTypeID() {
+            // Convert CFArray to Swift Array
+            let arrayValue = value as! CFArray
+            let count = CFArrayGetCount(arrayValue)
+            var swiftArray: [Any] = []
+            for i in 0..<count {
+                let item = CFArrayGetValueAtIndex(arrayValue, i)
+                if let convertedItem = convertCFTypeToJSONSerializable(item as CFTypeRef) {
+                    swiftArray.append(convertedItem)
+                }
+            }
+            return swiftArray
+        } else if CFGetTypeID(value) == CFDictionaryGetTypeID() {
+            // Convert CFDictionary to Swift Dictionary
+            let dictValue = value as! CFDictionary
+            var swiftDict: [String: Any] = [:]
+            let keyCount = CFDictionaryGetCount(dictValue)
+            
+            // Allocate arrays for keys and values
+            let keys = UnsafeMutablePointer<UnsafeRawPointer?>.allocate(capacity: keyCount)
+            let values = UnsafeMutablePointer<UnsafeRawPointer?>.allocate(capacity: keyCount)
+            defer {
+                keys.deallocate()
+                values.deallocate()
+            }
+            
+            CFDictionaryGetKeysAndValues(dictValue, keys, values)
+            
+            for i in 0..<keyCount {
+                if let keyPtr = keys[i],
+                   let valuePtr = values[i],
+                   let key = Unmanaged<CFString>.fromOpaque(keyPtr).takeUnretainedValue() as String?,
+                   let convertedValue = convertCFTypeToJSONSerializable(valuePtr as CFTypeRef) {
+                    swiftDict[key] = convertedValue
+                }
+            }
+            return swiftDict
+        } else {
+            // For other types, convert to string description
+            return String(describing: value)
+        }
     }
     
     /// Print all available attributes of an element to console for debugging
@@ -574,6 +624,268 @@ class LogicMonitor: ObservableObject {
         // This would require making serverURL mutable, but for now we'll use the constant
         print("📡 Server URL configured: \(url)")
         print("💡 To change server URL, modify the serverURL constant in LogicMonitor.swift")
+    }
+    
+    // MARK: - Session Recording
+    
+    /// Enable session recording mode
+    func enableSessionRecording() {
+        sessionRecordingEnabled = true
+        log("📹 Session recording enabled")
+    }
+    
+    /// Disable session recording mode
+    func disableSessionRecording() {
+        sessionRecordingEnabled = false
+        log("📹 Session recording disabled")
+    }
+    
+    /// Start recording a new session
+    private func startSessionRecording() {
+        sessionStartTime = Date()
+        sessionNotifications.removeAll()
+        
+        // Create session file
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let sessionFileName = "logic_session_\(Int(sessionStartTime!.timeIntervalSince1970)).json"
+        sessionFileURL = documentsPath.appendingPathComponent(sessionFileName)
+        
+        // Create the file immediately
+        createSessionFile()
+        
+        log("📹 Started session recording at \(sessionStartTime?.description ?? "unknown time")")
+        log("📁 Session file: \(sessionFileURL?.lastPathComponent ?? "unknown")")
+    }
+    
+    /// Add notification to session recording
+    private func addToSessionRecording(_ notification: [String: Any]) {
+        var sessionNotification = notification
+        sessionNotification["sessionTimestamp"] = Date().timeIntervalSince1970
+        sessionNotification["relativeTime"] = sessionStartTime?.timeIntervalSinceNow ?? 0
+        
+        // Add to memory (with size limit)
+        sessionNotifications.append(sessionNotification)
+        
+        // Manage memory: keep only recent notifications in memory
+        if sessionNotifications.count > maxMemoryNotifications {
+            let notificationsToWrite = Array(sessionNotifications.prefix(sessionNotifications.count - maxMemoryNotifications))
+            sessionNotifications = Array(sessionNotifications.suffix(maxMemoryNotifications))
+            
+            // Write older notifications to file
+            appendNotificationsToFile(notificationsToWrite)
+        }
+        
+        // Also append current notification to file for persistence
+        appendNotificationToFile(sessionNotification)
+    }
+    
+    /// End session recording and upload the complete session
+    private func endSessionRecording() {
+        guard let startTime = sessionStartTime else {
+            log("❌ No active session to end")
+            return
+        }
+        
+        let endTime = Date()
+        let duration = endTime.timeIntervalSince(startTime)
+        
+        // Read all notifications from file and combine with memory
+        let fileNotifications = readAllNotificationsFromFile()
+        let allNotifications = fileNotifications + sessionNotifications
+        
+        log("📹 Ending session recording - Duration: \(String(format: "%.2f", duration))s")
+        log("📊 Total notifications: \(allNotifications.count) (Memory: \(sessionNotifications.count), File: \(fileNotifications.count))")
+        
+        // Create session summary
+        let sessionData: [String: Any] = [
+            "sessionId": UUID().uuidString,
+            "startTime": startTime.timeIntervalSince1970,
+            "endTime": endTime.timeIntervalSince1970,
+            "duration": duration,
+            "notificationCount": allNotifications.count,
+            "logicProBundleId": logicBundleID,
+            "sessionFilePath": sessionFileURL?.path ?? "",
+            "sessionFileSize": getSessionFileSize(),
+            "notifications": allNotifications
+        ]
+        
+        // Upload session data
+        uploadSessionToServer(sessionData)
+        
+        // Clear session data
+        sessionNotifications.removeAll()
+        sessionStartTime = nil
+        sessionFileURL = nil
+    }
+    
+    /// Upload complete session data to server
+    private func uploadSessionToServer(_ sessionData: [String: Any]) {
+        guard let url = URL(string: serverURL.replacingOccurrences(of: "/notifications", with: "/session")) else {
+            log("❌ Invalid session server URL")
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: sessionData, options: [.prettyPrinted, .sortedKeys])
+            request.httpBody = jsonData
+            
+            let task = URLSession.shared.dataTask(with: request) { data, response, error in
+                if let error = error {
+                    print("❌ Session upload failed: \(error.localizedDescription)")
+                    return
+                }
+                
+                if let httpResponse = response as? HTTPURLResponse {
+                    if httpResponse.statusCode == 200 {
+                        print("✅ Successfully uploaded session with \(sessionData["notificationCount"] ?? 0) notifications")
+                    } else {
+                        print("❌ Session upload returned status code: \(httpResponse.statusCode)")
+                    }
+                }
+                
+                if let data = data, let responseString = String(data: data, encoding: .utf8) {
+                    print("📡 Session upload response: \(responseString)")
+                }
+            }
+            
+            task.resume()
+            
+        } catch {
+            log("❌ Failed to serialize session data: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Get current session statistics
+    func getSessionStats() -> [String: Any] {
+        return [
+            "recordingEnabled": sessionRecordingEnabled,
+            "sessionActive": sessionStartTime != nil,
+            "notificationCount": sessionNotifications.count,
+            "sessionDuration": sessionStartTime?.timeIntervalSinceNow ?? 0
+        ]
+    }
+    
+    /// Force end current session and upload
+    func endCurrentSession() {
+        if sessionRecordingEnabled && sessionStartTime != nil {
+            endSessionRecording()
+        }
+    }
+    
+    // MARK: - File Operations
+    
+    /// Append a single notification to the session file
+    private func appendNotificationToFile(_ notification: [String: Any]) {
+        guard let fileURL = sessionFileURL else { return }
+        
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: notification, options: [])
+            let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
+            
+            // Append to file with newline
+            let fileHandle = try FileHandle(forWritingTo: fileURL)
+            fileHandle.seekToEndOfFile()
+            fileHandle.write("\(jsonString)\n".data(using: .utf8)!)
+            fileHandle.closeFile()
+        } catch {
+            // If file doesn't exist, create it
+            if (error as NSError).code == NSFileReadNoSuchFileError {
+                createSessionFile()
+                appendNotificationToFile(notification)
+            } else {
+                log("❌ Failed to append notification to file: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    /// Append multiple notifications to the session file
+    private func appendNotificationsToFile(_ notifications: [[String: Any]]) {
+        guard let fileURL = sessionFileURL else { return }
+        
+        do {
+            let fileHandle = try FileHandle(forWritingTo: fileURL)
+            fileHandle.seekToEndOfFile()
+            
+            for notification in notifications {
+                let jsonData = try JSONSerialization.data(withJSONObject: notification, options: [])
+                let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
+                fileHandle.write("\(jsonString)\n".data(using: .utf8)!)
+            }
+            
+            fileHandle.closeFile()
+        } catch {
+            log("❌ Failed to append notifications to file: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Create initial session file
+    private func createSessionFile() {
+        guard let fileURL = sessionFileURL else { return }
+        
+        do {
+            // Create empty file
+            try "".write(to: fileURL, atomically: true, encoding: .utf8)
+            log("📁 Created session file: \(fileURL.lastPathComponent)")
+        } catch {
+            log("❌ Failed to create session file: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Read all notifications from session file
+    private func readAllNotificationsFromFile() -> [[String: Any]] {
+        guard let fileURL = sessionFileURL else { return [] }
+        
+        do {
+            let content = try String(contentsOf: fileURL, encoding: .utf8)
+            let lines = content.components(separatedBy: .newlines).filter { !$0.isEmpty }
+            
+            var notifications: [[String: Any]] = []
+            for line in lines {
+                if let data = line.data(using: .utf8),
+                   let notification = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    notifications.append(notification)
+                }
+            }
+            
+            return notifications
+        } catch {
+            log("❌ Failed to read session file: \(error.localizedDescription)")
+            return []
+        }
+    }
+    
+    /// Get session file path for user access
+    func getSessionFilePath() -> String? {
+        return sessionFileURL?.path
+    }
+    
+    /// Get session file size
+    func getSessionFileSize() -> Int64 {
+        guard let fileURL = sessionFileURL else { return 0 }
+        
+        do {
+            let attributes = try FileManager.default.attributesOfItem(atPath: fileURL.path)
+            return attributes[.size] as? Int64 ?? 0
+        } catch {
+            return 0
+        }
+    }
+    
+    /// Get Documents directory path
+    func getDocumentsDirectoryPath() -> String {
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        return documentsPath.path
+    }
+    
+    /// Open Documents directory in Finder
+    func openDocumentsDirectoryInFinder() {
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        NSWorkspace.shared.open(documentsPath)
+        log("📁 Opened Documents directory: \(documentsPath.path)")
     }
 }
 
