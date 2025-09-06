@@ -12,22 +12,6 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		2F7A266A2E671083001FD31A /* Exceptions for "ProjectExplorer" folder in "logic" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				AXAttributeConstants.txt,
-				AXUIElement.txt,
-			);
-			target = 2F11D93D2E5EF9E6004513B9 /* logic */;
-		};
-		2F7A266B2E671083001FD31A /* Exceptions for "ProjectExplorer" folder in "LogicProExplorer" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				AXAttributeConstants.txt,
-				AXUIElement.txt,
-			);
-			target = 2FB64B9C2E670D0000F2D812 /* LogicProExplorer */;
-		};
 		2FB64BB22E670DA700F2D812 /* Exceptions for "logic" folder in "LogicProExplorer" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -48,10 +32,6 @@
 		};
 		2FB64B9E2E670D0000F2D812 /* ProjectExplorer */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				2F7A266A2E671083001FD31A /* Exceptions for "ProjectExplorer" folder in "logic" target */,
-				2F7A266B2E671083001FD31A /* Exceptions for "ProjectExplorer" folder in "LogicProExplorer" target */,
-			);
 			path = ProjectExplorer;
 			sourceTree = "<group>";
 		};
