@@ -1,0 +1,101 @@
+
+import ColorSync
+import CoreGraphics
+import CoreServices
+import CoreText
+import ImageIO
+
+public var kAXMainWindowChangedNotification: String { get }
+
+public var kAXFocusedWindowChangedNotification: String { get }
+
+public var kAXFocusedUIElementChangedNotification: String { get }
+
+public var kAXApplicationActivatedNotification: String { get }
+
+public var kAXApplicationDeactivatedNotification: String { get }
+
+public var kAXApplicationHiddenNotification: String { get }
+
+public var kAXApplicationShownNotification: String { get }
+
+public var kAXWindowCreatedNotification: String { get }
+
+public var kAXWindowMovedNotification: String { get }
+
+public var kAXWindowResizedNotification: String { get }
+
+public var kAXWindowMiniaturizedNotification: String { get }
+
+public var kAXWindowDeminiaturizedNotification: String { get }
+
+public var kAXDrawerCreatedNotification: String { get }
+
+public var kAXSheetCreatedNotification: String { get }
+
+public var kAXHelpTagCreatedNotification: String { get }
+
+public var kAXValueChangedNotification: String { get }
+
+public var kAXUIElementDestroyedNotification: String { get }
+
+public var kAXElementBusyChangedNotification: String { get }
+
+public var kAXMenuOpenedNotification: String { get }
+
+public var kAXMenuClosedNotification: String { get }
+
+public var kAXMenuItemSelectedNotification: String { get }
+
+public var kAXRowCountChangedNotification: String { get }
+
+public var kAXRowExpandedNotification: String { get }
+
+public var kAXRowCollapsedNotification: String { get }
+
+public var kAXSelectedCellsChangedNotification: String { get }
+
+public var kAXUnitsChangedNotification: String { get }
+
+public var kAXSelectedChildrenMovedNotification: String { get }
+
+public var kAXSelectedChildrenChangedNotification: String { get }
+
+public var kAXResizedNotification: String { get }
+
+public var kAXMovedNotification: String { get }
+
+public var kAXCreatedNotification: String { get }
+
+public var kAXSelectedRowsChangedNotification: String { get }
+
+public var kAXSelectedColumnsChangedNotification: String { get }
+
+public var kAXSelectedTextChangedNotification: String { get }
+
+public var kAXTitleChangedNotification: String { get }
+
+public var kAXLayoutChangedNotification: String { get }
+
+public var kAXAnnouncementRequestedNotification: String { get }
+
+public var kAXUIElementsKey: String { get }
+
+public var kAXPriorityKey: String { get }
+
+public var kAXAnnouncementKey: String { get }
+
+public var kAXUIElementTitleKey: String { get }
+
+/** @abstract Priority values used for kAXPriorityKey
+ */
+@available(macOS 10.9, *)
+public enum AXPriority : CFIndex, @unchecked Sendable {
+
+    case low = 10
+
+    case medium = 50
+
+    case high = 90
+}
+
