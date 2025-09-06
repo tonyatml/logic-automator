@@ -660,8 +660,9 @@ class LogicMonitor: ObservableObject {
     /// Add notification to session recording
     private func addToSessionRecording(_ notification: [String: Any]) {
         var sessionNotification = notification
-        sessionNotification["sessionTimestamp"] = Date().timeIntervalSince1970
-        sessionNotification["relativeTime"] = sessionStartTime?.timeIntervalSinceNow ?? 0
+        let currentTime = Date().timeIntervalSince1970
+        sessionNotification["sessionTimestamp"] = currentTime
+        sessionNotification["relativeTime"] = currentTime - (sessionStartTime?.timeIntervalSince1970 ?? 0)
         
         // Add to memory (with size limit)
         sessionNotifications.append(sessionNotification)
@@ -783,14 +784,25 @@ class LogicMonitor: ObservableObject {
         guard let fileURL = sessionFileURL else { return }
         
         do {
-            let jsonData = try JSONSerialization.data(withJSONObject: notification, options: [])
-            let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
+            // Read existing array from file
+            let content = try String(contentsOf: fileURL, encoding: .utf8)
+            var notifications: [[String: Any]] = []
             
-            // Append to file with newline
-            let fileHandle = try FileHandle(forWritingTo: fileURL)
-            fileHandle.seekToEndOfFile()
-            fileHandle.write("\(jsonString)\n".data(using: .utf8)!)
-            fileHandle.closeFile()
+            if !content.isEmpty && content != "[]" {
+                if let data = content.data(using: .utf8),
+                   let existingArray = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                    notifications = existingArray
+                }
+            }
+            
+            // Add new notification
+            notifications.append(notification)
+            
+            // Write back to file as complete JSON array
+            let jsonData = try JSONSerialization.data(withJSONObject: notifications, options: [.prettyPrinted])
+            let jsonString = String(data: jsonData, encoding: .utf8) ?? "[]"
+            try jsonString.write(to: fileURL, atomically: true, encoding: .utf8)
+            
         } catch {
             // If file doesn't exist, create it
             if (error as NSError).code == NSFileReadNoSuchFileError {
@@ -807,16 +819,25 @@ class LogicMonitor: ObservableObject {
         guard let fileURL = sessionFileURL else { return }
         
         do {
-            let fileHandle = try FileHandle(forWritingTo: fileURL)
-            fileHandle.seekToEndOfFile()
+            // Read existing array from file
+            let content = try String(contentsOf: fileURL, encoding: .utf8)
+            var existingNotifications: [[String: Any]] = []
             
-            for notification in notifications {
-                let jsonData = try JSONSerialization.data(withJSONObject: notification, options: [])
-                let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
-                fileHandle.write("\(jsonString)\n".data(using: .utf8)!)
+            if !content.isEmpty && content != "[]" {
+                if let data = content.data(using: .utf8),
+                   let existingArray = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                    existingNotifications = existingArray
+                }
             }
             
-            fileHandle.closeFile()
+            // Add new notifications
+            existingNotifications.append(contentsOf: notifications)
+            
+            // Write back to file as complete JSON array
+            let jsonData = try JSONSerialization.data(withJSONObject: existingNotifications, options: [.prettyPrinted])
+            let jsonString = String(data: jsonData, encoding: .utf8) ?? "[]"
+            try jsonString.write(to: fileURL, atomically: true, encoding: .utf8)
+            
         } catch {
             log("❌ Failed to append notifications to file: \(error.localizedDescription)")
         }
@@ -827,8 +848,8 @@ class LogicMonitor: ObservableObject {
         guard let fileURL = sessionFileURL else { return }
         
         do {
-            // Create empty file
-            try "".write(to: fileURL, atomically: true, encoding: .utf8)
+            // Create file with empty JSON array
+            try "[]".write(to: fileURL, atomically: true, encoding: .utf8)
             log("📁 Created session file: \(fileURL.lastPathComponent)")
         } catch {
             log("❌ Failed to create session file: \(error.localizedDescription)")
@@ -841,17 +862,17 @@ class LogicMonitor: ObservableObject {
         
         do {
             let content = try String(contentsOf: fileURL, encoding: .utf8)
-            let lines = content.components(separatedBy: .newlines).filter { !$0.isEmpty }
             
-            var notifications: [[String: Any]] = []
-            for line in lines {
-                if let data = line.data(using: .utf8),
-                   let notification = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    notifications.append(notification)
-                }
+            if content.isEmpty || content == "[]" {
+                return []
             }
             
-            return notifications
+            if let data = content.data(using: .utf8),
+               let notifications = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                return notifications
+            }
+            
+            return []
         } catch {
             log("❌ Failed to read session file: \(error.localizedDescription)")
             return []
