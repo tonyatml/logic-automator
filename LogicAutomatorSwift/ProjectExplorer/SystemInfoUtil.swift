@@ -172,7 +172,7 @@ class SystemInfoUtil {
     /// Get device identifier
     static func getDeviceID() -> String {
         // Try to get hardware UUID
-        let platformExpert = IOServiceGetMatchingService(kIOMasterPortDefault, IOServiceMatching("IOPlatformExpertDevice"))
+        let platformExpert = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPlatformExpertDevice"))
         
         if platformExpert != 0 {
             let serialNumberAsCFString = IORegistryEntryCreateCFProperty(platformExpert, "IOPlatformSerialNumber" as CFString, kCFAllocatorDefault, 0)
