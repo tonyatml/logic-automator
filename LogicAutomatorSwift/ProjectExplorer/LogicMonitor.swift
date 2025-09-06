@@ -156,17 +156,20 @@ class LogicMonitor: ObservableObject {
     private func handleNotification(observer: AXObserver, element: AXUIElement, notification: CFString) {
         let notificationName = notification as String
         
-        // Get element information
-        var title: CFTypeRef?
-        AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &title)
-        let titleString = title as? String ?? "Unknown"
+        // Get element information - try multiple attributes for better description
+        let elementDescription = getElementDescription(element)
         
         // Get role information
         var role: CFTypeRef?
         AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
         let roleString = role as? String ?? "Unknown"
         
-        let message = "📢 Notification: \(notificationName) | Role: \(roleString) | Title: \(titleString)"
+        // Get role description
+        var roleDescription: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXRoleDescriptionAttribute as CFString, &roleDescription)
+        let roleDescriptionString = roleDescription as? String ?? "Unknown"
+        
+        let message = "📢 Notification: \(notificationName) | Role: \(roleString) | RoleDesc: \(roleDescriptionString) | Description: \(elementDescription)"
         
         DispatchQueue.main.async {
             self.lastNotification = message
@@ -177,6 +180,126 @@ class LogicMonitor: ObservableObject {
         
         // Handle specific notifications
         handleSpecificNotification(notificationName, element: element)
+    }
+    
+    /// Get the best available description for an element
+    private func getElementDescription(_ element: AXUIElement) -> String {
+        // Print all available attributes to console for debugging
+        printAllElementAttributes(element)
+        
+        var descriptions: [String] = []
+        
+        // Try multiple attributes and collect all non-empty values
+        let attributes = [
+            ("Description", kAXDescriptionAttribute),
+            ("Title", kAXTitleAttribute),
+            ("Value", kAXValueAttribute),
+            ("Help", kAXHelpAttribute),
+            ("Identifier", kAXIdentifierAttribute),
+            ("Subrole", kAXSubroleAttribute)
+        ]
+        
+        for (name, attribute) in attributes {
+            var value: CFTypeRef?
+            let result = AXUIElementCopyAttributeValue(element, attribute as CFString, &value)
+            if result == .success, let stringValue = value as? String, !stringValue.isEmpty {
+                descriptions.append("\(name): \(stringValue)")
+            }
+        }
+        
+        // If we have multiple descriptions, combine them
+        if descriptions.count > 1 {
+            return descriptions.joined(separator: " | ")
+        } else if descriptions.count == 1 {
+            return descriptions[0]
+        }
+        
+        // If no direct attribute works, try to find text in child elements
+        if let childText = findTextInChildren(element) {
+            return "ChildText: \(childText)"
+        }
+        
+        return "Unknown"
+    }
+    
+    /// Print all available attributes of an element to console for debugging
+    private func printAllElementAttributes(_ element: AXUIElement) {
+        print("🔍 === AXUIElement Attributes Debug ===")
+        
+        // Get all attribute names
+        var attributeNames: CFArray?
+        let result = AXUIElementCopyAttributeNames(element, &attributeNames)
+        
+        if result == .success, let names = attributeNames as? [String] {
+            print("📋 Available attributes (\(names.count)):")
+            for (index, name) in names.enumerated() {
+                print("  \(index + 1). \(name)")
+                
+                // Try to get the value for each attribute
+                var value: CFTypeRef?
+                let valueResult = AXUIElementCopyAttributeValue(element, name as CFString, &value)
+                
+                if valueResult == .success {
+                    if let stringValue = value as? String {
+                        print("     Value: \"\(stringValue)\"")
+                    } else if let numberValue = value as? NSNumber {
+                        print("     Value: \(numberValue)")
+                    } else if let boolValue = value as? Bool {
+                        print("     Value: \(boolValue)")
+                    } else if let arrayValue = value as? [Any] {
+                        print("     Value: Array with \(arrayValue.count) items")
+                    } else if let dictValue = value as? [String: Any] {
+                        print("     Value: Dictionary with \(dictValue.count) keys")
+                    } else {
+                        print("     Value: \(type(of: value)) - \(String(describing: value))")
+                    }
+                } else {
+                    print("     Value: Failed to get value (error: \(valueResult.rawValue))")
+                }
+            }
+        } else {
+            print("❌ Failed to get attribute names: \(result.rawValue)")
+        }
+        
+        print("🔍 === End Attributes Debug ===")
+    }
+    
+    /// Find text in child elements (similar to AccessibilityUtil method)
+    private func findTextInChildren(_ element: AXUIElement) -> String? {
+        var children: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &children)
+        
+        if result == .success, let children = children {
+            let childrenArray = children as! [AXUIElement]
+            
+            for child in childrenArray {
+                // Check if child is a text element
+                var role: CFTypeRef?
+                let roleResult = AXUIElementCopyAttributeValue(child, kAXRoleAttribute as CFString, &role)
+                
+                if roleResult == .success, let role = role as? String {
+                    if role == "AXStaticText" || role == "AXTextField" {
+                        // Try to get title from child
+                        var title: CFTypeRef?
+                        let titleResult = AXUIElementCopyAttributeValue(child, kAXTitleAttribute as CFString, &title)
+                        
+                        if titleResult == .success, let title = title as? String, !title.isEmpty {
+                            return title
+                        }
+                        
+                        // Try to get description from child
+                        var description: CFTypeRef?
+                        let descResult = AXUIElementCopyAttributeValue(child, kAXDescriptionAttribute as CFString, &description)
+                        
+                        if descResult == .success, let description = description as? String, !description.isEmpty {
+                            return description
+                        }
+                    }
+                }
+            }
+        }
+        
+        return nil
     }
     
     private func handleSpecificNotification(_ notification: String, element: AXUIElement) {
