@@ -185,6 +185,8 @@ class LogicMonitor: ObservableObject {
     private func handleNotification(observer: AXObserver, element: AXUIElement, notification: CFString) {
         let notificationName = notification as String
         
+        handleSpecificNotification(notificationName, element: element)
+        
         // Get element information - try multiple attributes for better description
         let elementDescription = getElementDescription(element)
         
@@ -207,8 +209,6 @@ class LogicMonitor: ObservableObject {
         
         log(message)
         
-        // Handle specific notifications
-        handleSpecificNotification(notificationName, element: element)
     }
     
     /// Get the best available description for an element
@@ -334,93 +334,93 @@ class LogicMonitor: ObservableObject {
     private func handleSpecificNotification(_ notification: String, element: AXUIElement) {
         switch notification {
         // Window notifications
-        case kAXWindowCreatedNotification as String:
+        case kAXWindowCreatedNotification:
             log("🪟 New window created")
-        case kAXWindowMovedNotification as String:
+        case kAXWindowMovedNotification:
             log("🪟 Window moved")
-        case kAXWindowResizedNotification as String:
+        case kAXWindowResizedNotification:
             log("🪟 Window resized")
-        case kAXWindowMiniaturizedNotification as String:
+        case kAXWindowMiniaturizedNotification:
             log("🪟 Window minimized")
-        case kAXWindowDeminiaturizedNotification as String:
+        case kAXWindowDeminiaturizedNotification:
             log("🪟 Window restored")
             
         // Title and focus notifications
-        case kAXTitleChangedNotification as String:
+        case kAXTitleChangedNotification:
             log("🏷️ Title changed")
-        case kAXFocusedWindowChangedNotification as String:
+        case kAXFocusedWindowChangedNotification:
             log("🎯 Focused window changed")
-        case kAXFocusedUIElementChangedNotification as String:
+        case kAXFocusedUIElementChangedNotification:
             log("🎯 Focused UI element changed")
             
         // Value and selection notifications
-        case kAXValueChangedNotification as String:
+        case kAXValueChangedNotification:
             log("📊 Value changed")
-        case kAXSelectedChildrenChangedNotification as String:
+        case kAXSelectedChildrenChangedNotification:
             log("👶 Selected children changed")
-        case kAXSelectedTextChangedNotification as String:
+        case kAXSelectedTextChangedNotification:
             log("📝 Selected text changed")
-        case kAXSelectedChildrenMovedNotification as String:
+        case kAXSelectedChildrenMovedNotification:
             log("👶 Selected children moved")
             
         // Menu notifications
-        case kAXMenuOpenedNotification as String:
+        case kAXMenuOpenedNotification:
             log("📋 Menu opened")
-        case kAXMenuClosedNotification as String:
+        case kAXMenuClosedNotification:
             log("📋 Menu closed")
-        case kAXMenuItemSelectedNotification as String:
+        case kAXMenuItemSelectedNotification:
             log("📋 Menu item selected")
             
         // Table and row notifications
-        case kAXRowCountChangedNotification as String:
+        case kAXRowCountChangedNotification:
             log("📊 Row count changed")
-        case kAXRowExpandedNotification as String:
+        case kAXRowExpandedNotification:
             log("📊 Row expanded")
-        case kAXRowCollapsedNotification as String:
+        case kAXRowCollapsedNotification:
             log("📊 Row collapsed")
-        case kAXSelectedCellsChangedNotification as String:
+        case kAXSelectedCellsChangedNotification:
             log("📊 Selected cells changed")
-        case kAXSelectedRowsChangedNotification as String:
+        case kAXSelectedRowsChangedNotification:
             log("📊 Selected rows changed")
-        case kAXSelectedColumnsChangedNotification as String:
+        case kAXSelectedColumnsChangedNotification:
             log("📊 Selected columns changed")
             
         // Element lifecycle notifications
-        case kAXUIElementDestroyedNotification as String:
+        case kAXUIElementDestroyedNotification:
             log("💀 UI element destroyed")
-        case kAXCreatedNotification as String:
+        case kAXCreatedNotification:
             log("✨ New element created")
-        case kAXElementBusyChangedNotification as String:
+        case kAXElementBusyChangedNotification:
             log("⏳ Element busy state changed")
             
         // Application notifications
-        case kAXApplicationActivatedNotification as String:
+        case kAXApplicationActivatedNotification:
             log("🚀 Application activated")
-        case kAXApplicationDeactivatedNotification as String:
+        case kAXApplicationDeactivatedNotification:
             log("💤 Application deactivated")
-        case kAXApplicationHiddenNotification as String:
+        case kAXApplicationHiddenNotification:
             log("👻 Application hidden")
-        case kAXApplicationShownNotification as String:
+        case kAXApplicationShownNotification:
             log("👁️ Application shown")
             
         // UI element notifications
-        case kAXDrawerCreatedNotification as String:
+        case kAXDrawerCreatedNotification:
             log("🗂️ Drawer created")
-        case kAXSheetCreatedNotification as String:
+        case kAXSheetCreatedNotification:
             log("📄 Sheet created")
-        case kAXHelpTagCreatedNotification as String:
+        case kAXHelpTagCreatedNotification:
             log("❓ Help tag created")
-        case kAXLayoutChangedNotification as String:
+        case kAXLayoutChangedNotification:
             log("🏗️ Layout changed")
-        case kAXMainWindowChangedNotification as String:
+        case kAXMainWindowChangedNotification:
             log("🪟 Main window changed")
-        case kAXMovedNotification as String:
+        case kAXMovedNotification:
             log("📍 Element moved")
-        case kAXResizedNotification as String:
+        case kAXResizedNotification:
             log("📏 Element resized")
-        case kAXUnitsChangedNotification as String:
+        case kAXUnitsChangedNotification:
             log("📐 Units changed")
-        case kAXAnnouncementRequestedNotification as String:
+        case kAXAnnouncementRequestedNotification:
             log("📢 Announcement requested")
             
         default:
