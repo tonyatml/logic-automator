@@ -233,6 +233,8 @@ struct ProjectExplorerView: View {
                     explorer.appendToLog(message)
                 }
             }
+            
+            SystemInfoUtil.printLightweightSystemInfo()
         }
     }
 }

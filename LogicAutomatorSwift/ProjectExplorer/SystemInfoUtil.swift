@@ -38,9 +38,12 @@ class SystemInfoUtil {
                let bundle = Bundle(url: bundleURL) {
                 let version = bundle.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
                 let build = bundle.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
+                let name = bundle.infoDictionary?["CFBundleName"] as? String ?? 
+                          bundle.infoDictionary?["CFBundleDisplayName"] as? String ?? 
+                          runningApp.localizedName ?? "Logic Pro"
                 
                 return [
-                    "name": "Logic Pro",
+                    "name": name,
                     "version": version,
                     "build": build,
                     "bundle_id": bundleID,
@@ -54,9 +57,12 @@ class SystemInfoUtil {
            let bundle = Bundle(url: appURL) {
             let version = bundle.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
             let build = bundle.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
+            let name = bundle.infoDictionary?["CFBundleName"] as? String ?? 
+                      bundle.infoDictionary?["CFBundleDisplayName"] as? String ?? 
+                      "Logic Pro"
             
             return [
-                "name": "Logic Pro",
+                "name": name,
                 "version": version,
                 "build": build,
                 "bundle_id": bundleID,
@@ -286,6 +292,7 @@ class SystemInfoUtil {
             "device_id": getDeviceID(),
             "cpu_model": cpuInfo["model"] ?? "Unknown",
             "system_version": systemInfo["version"] ?? "Unknown",
+            "logic_name": logicInfo["name"] ?? "Unknown",
             "logic_version": logicInfo["version"] ?? "Unknown",
             "username": userInfo["username"] ?? "Unknown",
             "app_version": appInfo["version"] ?? "Unknown",

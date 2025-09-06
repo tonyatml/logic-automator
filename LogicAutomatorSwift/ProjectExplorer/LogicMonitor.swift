@@ -301,7 +301,12 @@ class LogicMonitor: ObservableObject {
         if let stringValue = value as? String {
             return stringValue
         } else if let numberValue = value as? NSNumber {
-            return numberValue
+            // Convert NSNumber to basic types to avoid NSObject
+            if CFNumberIsFloatType(numberValue) {
+                return numberValue.doubleValue
+            } else {
+                return numberValue.int64Value
+            }
         } else if let boolValue = value as? Bool {
             return boolValue
         } else if CFGetTypeID(value) == CFArrayGetTypeID() {
@@ -579,11 +584,12 @@ class LogicMonitor: ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        // Create payload
+        // Create payload with system information
         let payload: [String: Any] = [
             "client_id": clientId,
             "session_id": sessionId ?? "no-session",
-            "events": notifications
+            "events": notifications,
+            "system_info": SystemInfoUtil.getLightweightSystemReport()
         ]
         
         do {
@@ -710,11 +716,12 @@ class LogicMonitor: ObservableObject {
         log("📹 Ending session recording - Duration: \(String(format: "%.2f", duration))s")
         log("📊 Total notifications: \(allNotifications.count) (Memory: \(sessionNotifications.count), File: \(fileNotifications.count))")
         
-        // Create session summary
+        // Create session summary with complete system information
         let sessionData: [String: Any] = [
             "client_id": clientId,
             "session_id": sessionId ?? UUID().uuidString,
-            "events": allNotifications
+            "events": allNotifications,
+            "system_info": SystemInfoUtil.getCompleteSystemReport()
         ]
         
         // Upload session data
