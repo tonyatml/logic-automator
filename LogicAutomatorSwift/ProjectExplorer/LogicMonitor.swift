@@ -188,7 +188,20 @@ class LogicMonitor: ObservableObject {
         handleSpecificNotification(notificationName, element: element)
         
         // Get element information - try multiple attributes for better description
-        let elementDescription = getElementDescription(element)
+        var elementAttributes = getElementDescription(element)
+
+        elementAttributes["command"] = notificationName
+        
+        // Convert attributes dictionary to JSON string for display
+        let elementDescription: String
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: elementAttributes, options: [.prettyPrinted, .sortedKeys])
+            elementDescription = String(data: jsonData, encoding: .utf8) ?? "{}"
+        } catch {
+            elementDescription = "{}"
+        }
+
+        print(elementDescription)
         
         // Get role information
         var role: CFTypeRef?
@@ -200,7 +213,7 @@ class LogicMonitor: ObservableObject {
         AXUIElementCopyAttributeValue(element, kAXRoleDescriptionAttribute as CFString, &roleDescription)
         let roleDescriptionString = roleDescription as? String ?? "Unknown"
         
-        let message = "📢 Notification: \(notificationName) | Role: \(roleString) | RoleDesc: \(roleDescriptionString) | Description: \(elementDescription)"
+        let message = "📢 Notification: \(notificationName) | Role: \(roleString) | RoleDesc: \(roleDescriptionString) "
         
         DispatchQueue.main.async {
             self.lastNotification = message
@@ -211,44 +224,61 @@ class LogicMonitor: ObservableObject {
         
     }
     
-    /// Get the best available description for an element
-    private func getElementDescription(_ element: AXUIElement) -> String {
-        // Print all available attributes to console for debugging
-        printAllElementAttributes(element)
+    /// Get all available attributes as a dictionary for analysis
+    private func getElementDescription(_ element: AXUIElement) -> [String: Any] {
+        // Get all attribute names
+        var attributeNames: CFArray?
+        let result = AXUIElementCopyAttributeNames(element, &attributeNames)
         
-        var descriptions: [String] = []
+        guard result == .success, let names = attributeNames as? [String] else {
+            return [:]
+        }
         
-        // Try multiple attributes and collect all non-empty values
-        let attributes = [
-            ("Description", kAXDescriptionAttribute),
-            ("Title", kAXTitleAttribute),
-            ("Value", kAXValueAttribute),
-            ("Help", kAXHelpAttribute),
-            ("Identifier", kAXIdentifierAttribute),
-            ("Subrole", kAXSubroleAttribute)
-        ]
+        var attributesDict: [String: Any] = [:]
         
-        for (name, attribute) in attributes {
+        // Get values for all attributes
+        for name in names {
             var value: CFTypeRef?
-            let result = AXUIElementCopyAttributeValue(element, attribute as CFString, &value)
-            if result == .success, let stringValue = value as? String, !stringValue.isEmpty {
-                descriptions.append("\(name): \(stringValue)")
+            let valueResult = AXUIElementCopyAttributeValue(element, name as CFString, &value)
+            
+            if valueResult == .success {
+                if let stringValue = value as? String {
+                    attributesDict[name] = stringValue
+                } else if let numberValue = value as? NSNumber {
+                    attributesDict[name] = numberValue
+                } else if let boolValue = value as? Bool {
+                    attributesDict[name] = boolValue
+                } else if let arrayValue = value as? [Any] {
+                    // Filter array to only include JSON-serializable values
+                    let filteredArray = arrayValue.compactMap { item in
+                        if item is String || item is NSNumber || item is Bool {
+                            return item
+                        } else {
+                            return String(describing: item)
+                        }
+                    }
+                    attributesDict[name] = filteredArray
+                } else if let dictValue = value as? [String: Any] {
+                    // Filter dictionary to only include JSON-serializable values
+                    var filteredDict: [String: Any] = [:]
+                    for (key, val) in dictValue {
+                        if val is String || val is NSNumber || val is Bool {
+                            filteredDict[key] = val
+                        } else {
+                            filteredDict[key] = String(describing: val)
+                        }
+                    }
+                    attributesDict[name] = filteredDict
+                } else {
+                    // Convert non-serializable types to string
+                    attributesDict[name] = String(describing: value)
+                }
+            } else {
+                attributesDict[name] = "Error: \(valueResult.rawValue)"
             }
         }
         
-        // If we have multiple descriptions, combine them
-        if descriptions.count > 1 {
-            return descriptions.joined(separator: " | ")
-        } else if descriptions.count == 1 {
-            return descriptions[0]
-        }
-        
-        // If no direct attribute works, try to find text in child elements
-        if let childText = findTextInChildren(element) {
-            return "ChildText: \(childText)"
-        }
-        
-        return "Unknown"
+        return attributesDict
     }
     
     /// Print all available attributes of an element to console for debugging
