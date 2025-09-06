@@ -4,7 +4,7 @@ import SwiftUI
 struct ProjectExplorerApp: App {
     var body: some Scene {
         WindowGroup {
-            ProjectExplorerMainView()
+            ProjectExplorerView()
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
@@ -12,7 +12,7 @@ struct ProjectExplorerApp: App {
 }
 
 struct ProjectExplorerMainView: View {
-    @StateObject private var projectExplorer = LogicProjectExplorerExample()
+    @StateObject private var projectExplorer = LogicProjectExplorer()
     
     var body: some View {
         VStack(spacing: 0) {
@@ -53,7 +53,7 @@ struct ProjectExplorerMainView: View {
 }
 
 struct ProjectExplorerContentView: View {
-    @ObservedObject var projectExplorer: LogicProjectExplorerExample
+    @ObservedObject var projectExplorer: LogicProjectExplorer
     
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {

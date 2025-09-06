@@ -44,40 +44,23 @@ class LogicRegionOperator: ObservableObject {
     // MARK: - Region Value Retrieval
     
     /// Get all region value attributes
-    func getRegionValues(_ region: LogicRegion) async throws -> LogicRegionValues {
-        log("Getting values for region '\(region.name)'...")
+    func getRegionValues(_ element: AXUIElement) async throws -> [String: Any] {
+        log("Getting values for region element...")
         
-        var values = LogicRegionValues()
+        var values: [String: Any] = [:]
         
-        // Get basic attributes
-        values.name = region.name
-        values.type = region.type
-        values.position = region.position
-        values.size = region.size
+        // Get basic region properties
+        values["volume"] = try await getRegionVolume(element)
+        values["pan"] = try await getRegionPan(element)
+        values["startTime"] = try await getRegionStartTime(element)
+        values["endTime"] = try await getRegionEndTime(element)
         
-        // Get volume
-        values.volume = try await getRegionVolume(region.element)
+        // Get MIDI-specific properties if applicable
+        values["velocity"] = try await getRegionVelocity(element)
+        values["pitch"] = try await getRegionPitch(element)
         
-        // Get pan
-        values.pan = try await getRegionPan(region.element)
-        
-        // Get start time
-        values.startTime = try await getRegionStartTime(region.element)
-        
-        // Get end time
-        values.endTime = try await getRegionEndTime(region.element)
-        
-        // Get length
-        values.length = values.endTime - values.startTime
-        
-        // Get velocity
-        values.velocity = try await getRegionVelocity(region.element)
-        
-        // Get pitch
-        values.pitch = try await getRegionPitch(region.element)
-        
-        // Get other attributes
-        values.properties = try await getAllRegionProperties(region.element)
+        // Get all other properties
+        values["properties"] = try await getAllRegionProperties(element)
         
         log("Region values retrieval complete")
         return values
@@ -204,17 +187,17 @@ class LogicRegionOperator: ObservableObject {
     // MARK: - Region Value Modification
     
     /// Set region volume
-    func setRegionVolume(_ region: LogicRegion, volume: Float) async throws {
-        log("Set region '\(region.name)' volume to \(volume)")
+    func setRegionVolume(_ element: AXUIElement, volume: Float) async throws {
+        log("Set region volume to \(volume)")
         
         // Method 1: Set volume attribute directly
-        if try await setAttributeValue(region.element, attribute: "AXValue", value: volume) {
+        if try await setAttributeValue(element, attribute: "AXValue", value: volume) {
             log("Volume set successfully")
             return
         }
         
         // Method 2: Set volume by volume slider
-        if let volumeSlider = try await findVolumeSlider(in: region.element) {
+        if let volumeSlider = try await findVolumeSlider(in: element) {
             if try await setAttributeValue(volumeSlider, attribute: "AXValue", value: volume) {
                 log("Volume set successfully by volume slider")
                 return
@@ -222,21 +205,21 @@ class LogicRegionOperator: ObservableObject {
         }
         
         // Method 3: Set volume by keyboard input
-        try await setVolumeByKeyboard(region.element, volume: volume)
+        try await setVolumeByKeyboard(element, volume: volume)
     }
     
     /// Set region pan
-    func setRegionPan(_ region: LogicRegion, pan: Float) async throws {
-        log("Set region '\(region.name)' pan to \(pan)")
+    func setRegionPan(_ element: AXUIElement, pan: Float) async throws {
+        log("Set region pan to \(pan)")
         
         // Method 1: Set pan attribute directly
-        if try await setAttributeValue(region.element, attribute: "AXValue", value: pan) {
+        if try await setAttributeValue(element, attribute: "AXValue", value: pan) {
             log("Pan set successfully")
             return
         }
         
         // Method 2: Set pan by pan slider
-        if let panSlider = try await findPanSlider(in: region.element) {
+        if let panSlider = try await findPanSlider(in: element) {
             if try await setAttributeValue(panSlider, attribute: "AXValue", value: pan) {
                 log("Pan set successfully by pan slider")
                 return
@@ -244,21 +227,21 @@ class LogicRegionOperator: ObservableObject {
         }
         
         // Method 3: Set pan by keyboard input
-        try await setPanByKeyboard(region.element, pan: pan)
+        try await setPanByKeyboard(element, pan: pan)
     }
     
     /// Set region velocity
-    func setRegionVelocity(_ region: LogicRegion, velocity: Int) async throws {
-        log("Set region '\(region.name)' velocity to \(velocity)")
+    func setRegionVelocity(_ element: AXUIElement, velocity: Int) async throws {
+        log("Set region velocity to \(velocity)")
         
         // Method 1: Set velocity attribute directly
-        if try await setAttributeValue(region.element, attribute: "AXValue", value: velocity) {
+        if try await setAttributeValue(element, attribute: "AXValue", value: velocity) {
             log("Velocity set successfully")
             return
         }
         
         // Method 2: Set velocity by velocity control
-        if let velocityControl = try await findVelocityControl(in: region.element) {
+        if let velocityControl = try await findVelocityControl(in: element) {
             if try await setAttributeValue(velocityControl, attribute: "AXValue", value: velocity) {
                 log("Velocity set successfully by velocity control")
                 return
@@ -266,21 +249,21 @@ class LogicRegionOperator: ObservableObject {
         }
         
         // Method 3: Set velocity by keyboard input
-        try await setVelocityByKeyboard(region.element, velocity: velocity)
+        try await setVelocityByKeyboard(element, velocity: velocity)
     }
     
     /// Set region pitch
-    func setRegionPitch(_ region: LogicRegion, pitch: Int) async throws {
-        log("Set region '\(region.name)' pitch to \(pitch)")
+    func setRegionPitch(_ element: AXUIElement, pitch: Int) async throws {
+        log("Set region pitch to \(pitch)")
         
         // Method 1: Set pitch attribute directly
-        if try await setAttributeValue(region.element, attribute: "AXValue", value: pitch) {
+        if try await setAttributeValue(element, attribute: "AXValue", value: pitch) {
             log("Pitch set successfully")
             return
         }
         
         // Method 2: Set pitch by pitch control
-        if let pitchControl = try await findPitchControl(in: region.element) {
+        if let pitchControl = try await findPitchControl(in: element) {
             if try await setAttributeValue(pitchControl, attribute: "AXValue", value: pitch) {
                 log("Pitch set successfully by pitch control")
                 return
@@ -288,35 +271,35 @@ class LogicRegionOperator: ObservableObject {
         }
         
         // Method 3: Set pitch by keyboard input
-        try await setPitchByKeyboard(region.element, pitch: pitch)
+        try await setPitchByKeyboard(element, pitch: pitch)
     }
     
     /// Move region to specified position
-    func moveRegion(_ region: LogicRegion, to position: CGPoint) async throws {
-        log("Move region '\(region.name)' to position \(position)")
+    func moveRegion(_ element: AXUIElement, to position: CGPoint) async throws {
+        log("Move region to position \(position)")
         
         // Method 1: Set position attribute directly
-        if try await setAttributeValue(region.element, attribute: "AXPosition", value: position) {
+        if try await setAttributeValue(element, attribute: "AXPosition", value: position) {
             log("Position set successfully")
             return
         }
         
         // Method 2: Drag operation
-        try await dragRegion(region.element, to: position)
+        try await dragRegion(element, to: position)
     }
     
     /// Resize region
-    func resizeRegion(_ region: LogicRegion, to size: CGSize) async throws {
-        log("Resize region '\(region.name)' to size \(size)")
+    func resizeRegion(_ element: AXUIElement, to size: CGSize) async throws {
+        log("Resize region to size \(size)")
         
         // Method 1: Set size attribute directly
-        if try await setAttributeValue(region.element, attribute: "AXSize", value: size) {
+        if try await setAttributeValue(element, attribute: "AXSize", value: size) {
             log("Size set successfully")
             return
         }
         
         // Method 2: Drag operation
-        try await resizeRegionByDrag(region.element, to: size)
+        try await resizeRegionByDrag(element, to: size)
     }
     
     // MARK: - Helper Methods

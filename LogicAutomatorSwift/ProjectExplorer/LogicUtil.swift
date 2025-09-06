@@ -318,15 +318,15 @@ class LogicUtil {
     }
     
     /// Click on a track element
-    static func clickTrack(_ track: LogicTrack, logCallback: ((String) -> Void)? = nil) async throws {
+    static func clickTrack(_ track: LogicTrack, element: AXUIElement, logCallback: ((String) -> Void)? = nil) async throws {
         logCallback?("Attempting to click track: \(track.name)")
         
-        let actions = try await AccessibilityUtil.getAvailableActions(track.element)
+        let actions = try await AccessibilityUtil.getAvailableActions(element)
         logCallback?("Available actions for track '\(track.name)': \(actions)")
         
         for action in actions {
             logCallback?("Trying action: \(action)")
-            let result = try await AccessibilityUtil.performAction(track.element, action: action)
+            let result = try await AccessibilityUtil.performAction(element, action: action)
             logCallback?("Action '\(action)' result: \(result)")
             
             if action == "AXShowMenu" {
@@ -337,7 +337,7 @@ class LogicUtil {
             try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
         }
         
-        try await findAndClickClickableChild(in: track.element, trackName: track.name, logCallback: logCallback)
+        try await findAndClickClickableChild(in: element, trackName: track.name, logCallback: logCallback)
     }
     
     /// Find and click a clickable child element
