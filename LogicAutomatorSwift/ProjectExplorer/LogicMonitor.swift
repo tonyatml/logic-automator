@@ -28,13 +28,15 @@ class LogicMonitor: ObservableObject {
     private let bufferSize = 10 // Send every 10 notifications
     private let bufferTimeout: TimeInterval = 5.0 // Or send every 5 seconds
     private var bufferTimer: Timer?
-    private let serverURL = "http://localhost:8080/api/notifications" // Configure your server URL
+    private let serverURL = "https://logic-copilot-server.vercel.app/api/logs/batch" // Configure your server URL
+    private let clientId = "logic-automator-client" // Client identifier
     
     // Session recording
     private var sessionNotifications: [[String: Any]] = []
     private var sessionStartTime: Date?
     private var sessionRecordingEnabled = true
     private var sessionFileURL: URL?
+    private var sessionId: String?
     private let maxMemoryNotifications = 1000 // Keep only last 1000 notifications in memory
     
     // Callback function for AXObserver
@@ -579,9 +581,9 @@ class LogicMonitor: ObservableObject {
         
         // Create payload
         let payload: [String: Any] = [
-            "timestamp": Date().timeIntervalSince1970,
-            "count": notifications.count,
-            "notifications": notifications
+            "client_id": clientId,
+            "session_id": sessionId ?? "no-session",
+            "events": notifications
         ]
         
         do {
@@ -595,6 +597,9 @@ class LogicMonitor: ObservableObject {
                 }
                 
                 if let httpResponse = response as? HTTPURLResponse {
+                    print("📡 Server response status: \(httpResponse.statusCode)")
+                    print("📡 Server response headers: \(httpResponse.allHeaderFields)")
+                    
                     if httpResponse.statusCode == 200 {
                         print("✅ Successfully sent \(notifications.count) notifications to server")
                     } else {
@@ -602,8 +607,14 @@ class LogicMonitor: ObservableObject {
                     }
                 }
                 
-                if let data = data, let responseString = String(data: data, encoding: .utf8) {
-                    print("📡 Server response: \(responseString)")
+                if let data = data {
+                    if let responseString = String(data: data, encoding: .utf8) {
+                        print("📡 Server response body: \(responseString)")
+                    } else {
+                        print("📡 Server response data (binary): \(data.count) bytes")
+                    }
+                } else {
+                    print("📡 Server response: No data received")
                 }
             }
             
@@ -644,6 +655,7 @@ class LogicMonitor: ObservableObject {
     private func startSessionRecording() {
         sessionStartTime = Date()
         sessionNotifications.removeAll()
+        sessionId = UUID().uuidString
         
         // Create session file
         let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
@@ -655,6 +667,7 @@ class LogicMonitor: ObservableObject {
         
         log("📹 Started session recording at \(sessionStartTime?.description ?? "unknown time")")
         log("📁 Session file: \(sessionFileURL?.lastPathComponent ?? "unknown")")
+        log("🆔 Session ID: \(sessionId ?? "unknown")")
     }
     
     /// Add notification to session recording
@@ -699,15 +712,9 @@ class LogicMonitor: ObservableObject {
         
         // Create session summary
         let sessionData: [String: Any] = [
-            "sessionId": UUID().uuidString,
-            "startTime": startTime.timeIntervalSince1970,
-            "endTime": endTime.timeIntervalSince1970,
-            "duration": duration,
-            "notificationCount": allNotifications.count,
-            "logicProBundleId": logicBundleID,
-            "sessionFilePath": sessionFileURL?.path ?? "",
-            "sessionFileSize": getSessionFileSize(),
-            "notifications": allNotifications
+            "client_id": clientId,
+            "session_id": sessionId ?? UUID().uuidString,
+            "events": allNotifications
         ]
         
         // Upload session data
@@ -717,11 +724,12 @@ class LogicMonitor: ObservableObject {
         sessionNotifications.removeAll()
         sessionStartTime = nil
         sessionFileURL = nil
+        sessionId = nil
     }
     
     /// Upload complete session data to server
     private func uploadSessionToServer(_ sessionData: [String: Any]) {
-        guard let url = URL(string: serverURL.replacingOccurrences(of: "/notifications", with: "/session")) else {
+        guard let url = URL(string: serverURL) else {
             log("❌ Invalid session server URL")
             return
         }
@@ -741,15 +749,28 @@ class LogicMonitor: ObservableObject {
                 }
                 
                 if let httpResponse = response as? HTTPURLResponse {
+                    print("📡 Session upload response status: \(httpResponse.statusCode)")
+                    print("📡 Session upload response headers: \(httpResponse.allHeaderFields)")
+                    
                     if httpResponse.statusCode == 200 {
-                        print("✅ Successfully uploaded session with \(sessionData["notificationCount"] ?? 0) notifications")
+                        if let events = sessionData["events"] as? [[String: Any]] {
+                            print("✅ Successfully uploaded session with \(events.count) events")
+                        } else {
+                            print("✅ Successfully uploaded session")
+                        }
                     } else {
                         print("❌ Session upload returned status code: \(httpResponse.statusCode)")
                     }
                 }
                 
-                if let data = data, let responseString = String(data: data, encoding: .utf8) {
-                    print("📡 Session upload response: \(responseString)")
+                if let data = data {
+                    if let responseString = String(data: data, encoding: .utf8) {
+                        print("📡 Session upload response body: \(responseString)")
+                    } else {
+                        print("📡 Session upload response data (binary): \(data.count) bytes")
+                    }
+                } else {
+                    print("📡 Session upload response: No data received")
                 }
             }
             
@@ -784,23 +805,31 @@ class LogicMonitor: ObservableObject {
         guard let fileURL = sessionFileURL else { return }
         
         do {
-            // Read existing array from file
+            // Read existing data from file
             let content = try String(contentsOf: fileURL, encoding: .utf8)
-            var notifications: [[String: Any]] = []
+            var fileData: [String: Any] = [
+                "client_id": clientId,
+                "session_id": sessionId ?? "unknown",
+                "events": []
+            ]
             
-            if !content.isEmpty && content != "[]" {
+            if !content.isEmpty {
                 if let data = content.data(using: .utf8),
-                   let existingArray = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
-                    notifications = existingArray
+                   let existingData = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    fileData = existingData
                 }
             }
             
-            // Add new notification
-            notifications.append(notification)
+            // Get existing events array
+            var events = fileData["events"] as? [[String: Any]] ?? []
             
-            // Write back to file as complete JSON array
-            let jsonData = try JSONSerialization.data(withJSONObject: notifications, options: [.prettyPrinted])
-            let jsonString = String(data: jsonData, encoding: .utf8) ?? "[]"
+            // Add new notification
+            events.append(notification)
+            fileData["events"] = events
+            
+            // Write back to file with upload format
+            let jsonData = try JSONSerialization.data(withJSONObject: fileData, options: [.prettyPrinted])
+            let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
             try jsonString.write(to: fileURL, atomically: true, encoding: .utf8)
             
         } catch {
@@ -819,23 +848,31 @@ class LogicMonitor: ObservableObject {
         guard let fileURL = sessionFileURL else { return }
         
         do {
-            // Read existing array from file
+            // Read existing data from file
             let content = try String(contentsOf: fileURL, encoding: .utf8)
-            var existingNotifications: [[String: Any]] = []
+            var fileData: [String: Any] = [
+                "client_id": clientId,
+                "session_id": sessionId ?? "unknown",
+                "events": []
+            ]
             
-            if !content.isEmpty && content != "[]" {
+            if !content.isEmpty {
                 if let data = content.data(using: .utf8),
-                   let existingArray = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
-                    existingNotifications = existingArray
+                   let existingData = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    fileData = existingData
                 }
             }
             
-            // Add new notifications
-            existingNotifications.append(contentsOf: notifications)
+            // Get existing events array
+            var events = fileData["events"] as? [[String: Any]] ?? []
             
-            // Write back to file as complete JSON array
-            let jsonData = try JSONSerialization.data(withJSONObject: existingNotifications, options: [.prettyPrinted])
-            let jsonString = String(data: jsonData, encoding: .utf8) ?? "[]"
+            // Add new notifications
+            events.append(contentsOf: notifications)
+            fileData["events"] = events
+            
+            // Write back to file with upload format
+            let jsonData = try JSONSerialization.data(withJSONObject: fileData, options: [.prettyPrinted])
+            let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
             try jsonString.write(to: fileURL, atomically: true, encoding: .utf8)
             
         } catch {
@@ -848,8 +885,17 @@ class LogicMonitor: ObservableObject {
         guard let fileURL = sessionFileURL else { return }
         
         do {
-            // Create file with empty JSON array
-            try "[]".write(to: fileURL, atomically: true, encoding: .utf8)
+            // Create file with upload format structure
+            let initialData: [String: Any] = [
+                "client_id": clientId,
+                "session_id": sessionId ?? "unknown",
+                "events": []
+            ]
+            
+            let jsonData = try JSONSerialization.data(withJSONObject: initialData, options: [.prettyPrinted])
+            let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
+            try jsonString.write(to: fileURL, atomically: true, encoding: .utf8)
+            
             log("📁 Created session file: \(fileURL.lastPathComponent)")
         } catch {
             log("❌ Failed to create session file: \(error.localizedDescription)")
@@ -863,13 +909,14 @@ class LogicMonitor: ObservableObject {
         do {
             let content = try String(contentsOf: fileURL, encoding: .utf8)
             
-            if content.isEmpty || content == "[]" {
+            if content.isEmpty {
                 return []
             }
             
             if let data = content.data(using: .utf8),
-               let notifications = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
-                return notifications
+               let fileData = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let events = fileData["events"] as? [[String: Any]] {
+                return events
             }
             
             return []
