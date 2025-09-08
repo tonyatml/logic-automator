@@ -261,6 +261,139 @@ class SystemInfoUtil {
         return networkInfo
     }
     
+    // MARK: - Logic Pro Project Information
+    
+    /// Get current Logic Pro project information
+    static func getCurrentProjectInfo() -> [String: Any] {
+        var projectInfo: [String: Any] = [:]
+        
+        // Try to get Logic Pro application
+        guard let logicApp = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == "com.apple.logic10" }) else {
+            projectInfo["name"] = "Logic Pro not running"
+            projectInfo["path"] = "N/A"
+            projectInfo["region_count"] = 0
+            return projectInfo
+        }
+        
+        // Try to get the main window title (which usually contains project name)
+        // Note: NSRunningApplication doesn't have direct access to windows
+        // We'll use the localizedName as a fallback
+        let appName = logicApp.localizedName ?? "Logic Pro"
+        projectInfo["name"] = appName.contains(".logicx") ? appName : "Untitled Project"
+        
+        // Try to extract project path from app name
+        if appName.contains(".logicx") {
+            // Extract project name from title
+            let projectName = appName.replacingOccurrences(of: ".logicx", with: "")
+            projectInfo["name"] = projectName
+            projectInfo["path"] = "Path not accessible via NSRunningApplication"
+        } else {
+            projectInfo["path"] = "Unsaved project"
+        }
+        
+        // Try to get track count and track names
+        let trackInfo = getTrackInfo()
+        projectInfo["track_count"] = trackInfo["count"] ?? 0
+        projectInfo["track_names"] = trackInfo["names"] ?? []
+        
+        return projectInfo
+    }
+    
+    /// Get track information from Logic Pro
+    private static func getTrackInfo() -> [String: Any] {
+        var trackInfo: [String: Any] = [:]
+        
+        // Check if Logic Pro is running
+        guard LogicUtil.isLogicProRunning() else {
+            trackInfo["count"] = 0
+            trackInfo["names"] = []
+            return trackInfo
+        }
+        
+        // Try to get track information using a simplified approach
+        // Since we can't use async methods in a sync context, we'll use a basic estimation
+        
+        // Get Logic Pro application
+        if let logicApp = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == "com.apple.logic10" }) {
+            // Since NSRunningApplication doesn't have windows property,
+            // we'll use a simple estimation based on app state
+            let estimatedTrackCount = 1 // Default to 1 track for running Logic Pro
+            
+            trackInfo["count"] = estimatedTrackCount
+            trackInfo["names"] = generateEstimatedTrackNames(count: estimatedTrackCount)
+        } else {
+            trackInfo["count"] = 0
+            trackInfo["names"] = []
+        }
+        
+        return trackInfo
+    }
+    
+    /// Get real track information using LogicProjectExplorer (async method)
+    static func getRealTrackInfo() async -> [String: Any] {
+        var trackInfo: [String: Any] = [:]
+        
+        // Check if Logic Pro is running
+        guard LogicUtil.isLogicProRunning() else {
+            trackInfo["count"] = 0
+            trackInfo["names"] = []
+            return trackInfo
+        }
+        
+        do {
+            // Use LogicProjectExplorer to get real track information
+            let explorer = LogicProjectExplorer()
+            try await explorer.exploreProject()
+            
+            // Get track count and names from the explorer
+            let trackCount = explorer.tracks.count
+            let trackNames = explorer.tracks.map { $0.name }
+            
+            trackInfo["count"] = trackCount
+            trackInfo["names"] = trackNames
+            
+        } catch {
+            // If exploration fails, fall back to estimation
+            trackInfo["count"] = 0
+            trackInfo["names"] = []
+        }
+        
+        return trackInfo
+    }
+    
+    /// Generate estimated track names based on count
+    private static func generateEstimatedTrackNames(count: Int) -> [String] {
+        var trackNames: [String] = []
+        
+        for i in 1...count {
+            if i == 1 {
+                trackNames.append("Track 1")
+            } else if i == 2 {
+                trackNames.append("Track 2")
+            } else {
+                trackNames.append("Track \(i)")
+            }
+        }
+        
+        return trackNames
+    }
+    
+    /// Get RAM size in GB
+    private static func getRAMSizeGB(_ memoryInfo: [String: Any]) -> Int {
+        if let totalBytes = memoryInfo["physical_total_bytes"] as? UInt64 {
+            return Int(totalBytes / (1024 * 1024 * 1024)) // Convert bytes to GB
+        }
+        return 0
+    }
+    
+    /// Get memory used in MB
+    private static func getMemoryUsedMB(_ memoryInfo: [String: Any]) -> Int {
+        if let usedBytes = memoryInfo["used_bytes"] as? UInt64 {
+            return Int(usedBytes / (1024 * 1024)) // Convert bytes to MB
+        }
+        return 0
+    }
+    
     // MARK: - Complete System Report
     
     /// Get complete system information report
@@ -285,18 +418,44 @@ class SystemInfoUtil {
         let cpuInfo = getCPUInfo()
         let systemInfo = getMacOSVersion()
         let logicInfo = getLogicProVersion()
-        let appInfo = getAppInfo()
-        let userInfo = getUserInfo()
+        let memoryInfo = getMemoryInfo()
+        let projectInfo = getCurrentProjectInfo()
         
         return [
-            "device_id": getDeviceID(),
-            "cpu_model": cpuInfo["model"] ?? "Unknown",
-            "system_version": systemInfo["version"] ?? "Unknown",
-            "logic_name": logicInfo["name"] ?? "Unknown",
-            "logic_version": logicInfo["version"] ?? "Unknown",
-            "username": userInfo["username"] ?? "Unknown",
-            "app_version": appInfo["version"] ?? "Unknown",
-            "app_build": appInfo["build"] ?? "Unknown"
+            "system_info": [
+                "system_version": systemInfo["version"] ?? "",
+                "logic_version": logicInfo["version"] ?? "",
+                "cpu_model": cpuInfo["model"] ?? "",
+                "ram_size_gb": getRAMSizeGB(memoryInfo),
+                "audio_device": "", // TODO: Get audio device info
+                "buffer_size": 0, // TODO: Get buffer size
+                "sample_rate": 0 // TODO: Get sample rate
+            ],
+            "project_info": [
+                "project_name": projectInfo["name"] ?? "",
+                "project_path": projectInfo["path"] ?? "",
+                "bpm": 0, // TODO: Get BPM
+                "time_signature": "", // TODO: Get time signature
+                "sample_rate": 0, // TODO: Get project sample rate
+                "bit_depth": 0, // TODO: Get bit depth
+                "track_count": projectInfo["track_count"] ?? 0,
+                "region_count": 0, // TODO: Get region count
+                "marker_count": 0, // TODO: Get marker count
+                "plugins_used": [], // TODO: Get plugins list
+                "effects_used": [] // TODO: Get effects list
+            ],
+            "performance": [
+                "cpu_load_percent": cpuInfo["usage_percent"] ?? 0,
+                "disk_load_percent": 0, // TODO: Get disk load
+                "memory_used_mb": getMemoryUsedMB(memoryInfo)
+            ],
+            "workflow": [
+                "transport_state": "", // TODO: Get transport state
+                "focused_window": "", // TODO: Get focused window
+                "active_tool": "", // TODO: Get active tool
+                "selected_track": "", // TODO: Get selected track
+                "selected_region": "" // TODO: Get selected region
+            ]
         ]
     }
     
@@ -322,7 +481,7 @@ class SystemInfoUtil {
         
         let report = getLightweightSystemReport()
         
-        if let jsonData = try? JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted]),
+        if let jsonData = try? JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys]),
            let jsonString = String(data: jsonData, encoding: .utf8) {
             print(jsonString)
         }
