@@ -251,31 +251,26 @@ class AXElementDebugger {
     }
     
     /// Debug selected children if they exist
-    static func debugSelectedChildren(_ element: AXUIElement) {
+    static func getSelectedChildren(_ notification: String, _ element: AXUIElement) -> [String: Any]? {
         var selectedChildren: CFTypeRef?
         let result = AXUIElementCopyAttributeValue(element, kAXSelectedChildrenAttribute as CFString, &selectedChildren)
         
+        var selected: [String] = []
+        
         if result == .success, let childrenArray = selectedChildren as? [AXUIElement] {
-            print("🔍 === Selected Children (\(childrenArray.count) items) ===")
             
-            for (index, child) in childrenArray.enumerated() {
+            for (_, child) in childrenArray.enumerated() {
                 var title: CFTypeRef?
-                var role: CFTypeRef?
-                var roleDescription: CFTypeRef?
                 
                 AXUIElementCopyAttributeValue(child, kAXTitleAttribute as CFString, &title)
-                AXUIElementCopyAttributeValue(child, kAXRoleAttribute as CFString, &role)
-                AXUIElementCopyAttributeValue(child, kAXRoleDescriptionAttribute as CFString, &roleDescription)
                 
                 let titleString = title as? String ?? "No Title"
-                let roleString = role as? String ?? "Unknown"
-                let roleDescString = roleDescription as? String ?? "Unknown"
                 
-                print("  \(index + 1). Title: \(titleString) | Role: \(roleString) | RoleDesc: \(roleDescString)")
+                selected.append(titleString)
             }
-            print("🔍 === End Selected Children ===")
+            return ["selectedChildren": selected, "command": notification]
         } else {
-            print("ℹ️ No selected children found or failed to get selected children")
+            return nil
         }
     }
 }

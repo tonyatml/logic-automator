@@ -215,20 +215,26 @@ class LogicMonitor: ObservableObject {
     private func handleNotification(observer: AXObserver, element: AXUIElement, notification: CFString) {
         let notificationName = notification as String
         
-        handleSpecificNotification(notificationName, element: element)
-        
         // Get element information - try multiple attributes for better description
         var elementAttributes = getElementAttributes(element)
         elementAttributes["command"] = notificationName
         
+        //guard let result = handleSpecificNotification(notificationName, element: element, events: elementAttributes) else {
+            //print("not supported: \(notification) yet")
+            //return
+        //}
+        
         // Convert attributes dictionary to JSON string for display
-        let elementDescription: String
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: elementAttributes, options: [.prettyPrinted, .sortedKeys])
-            elementDescription = String(data: jsonData, encoding: .utf8) ?? "{}"
-        } catch {
-            elementDescription = "{}"
-        }
+//        let elementDescription: String
+//        do {
+//            let jsonData = try JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys])
+//            elementDescription = String(data: jsonData, encoding: .utf8) ?? "{}"
+//        } catch {
+//            elementDescription = "{}"
+//        }
+        
+        // handle to serve the json string to the server
+        // print(elementDescription)
         
         // Add to session recording if enabled
         if sessionRecordingEnabled {
@@ -237,8 +243,7 @@ class LogicMonitor: ObservableObject {
             addToBuffer(elementAttributes)
         }
         
-        // handle to serve the json string to the server
-        // print(elementDescription)
+        
         
         // Get role information
         var role: CFTypeRef?
@@ -432,7 +437,7 @@ class LogicMonitor: ObservableObject {
         return nil
     }
     
-    private func handleSpecificNotification(_ notification: String, element: AXUIElement) {
+    private func handleSpecificNotification(_ notification: String, element: AXUIElement, events: [String : Any])-> [String: Any]? {
         switch notification {
         // Window notifications
         case kAXWindowCreatedNotification:
@@ -461,12 +466,14 @@ class LogicMonitor: ObservableObject {
             log("👶 Selected children changed")
         case kAXSelectedTextChangedNotification:
             log("📝 Selected text changed")
+            return AXElementDebugger.getSelectedChildren(notification, element)
         case kAXSelectedChildrenMovedNotification:
             log("👶 Selected children moved")
             
         // Menu notifications
         case kAXMenuOpenedNotification:
             log("📋 Menu opened")
+            return AXMenuOpenedParser.parse(events, element: element)
         case kAXMenuClosedNotification:
             log("📋 Menu closed")
         case kAXMenuItemSelectedNotification:
@@ -527,6 +534,8 @@ class LogicMonitor: ObservableObject {
         default:
             log("❓ Unknown notification: \(notification)")
         }
+        
+        return nil
     }
     
     private func log(_ message: String) {
@@ -569,7 +578,7 @@ class LogicMonitor: ObservableObject {
         
         // Send to server asynchronously
         DispatchQueue.global(qos: .background).async { [weak self] in
-            self?.sendNotificationsToServer(notificationsToSend)
+            //self?.sendNotificationsToServer(notificationsToSend)
         }
     }
     

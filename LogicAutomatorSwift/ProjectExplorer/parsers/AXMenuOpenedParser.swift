@@ -16,31 +16,21 @@ struct MenuInfo {
     let position: CGPoint
     let size: CGSize
     let menuType: String
+    let options: [String]
 }
 
 class AXMenuOpenedParser {
     
     /// Parse AXMenuOpened event to extract high-level menu information
-    static func parse(_ event: [String: Any], element: AXUIElement? = nil) -> MenuInfo? {
+    static func parse(_ event: [String: Any], element: AXUIElement? = nil) -> [String: Any]? {
         guard event["command"] as? String == "AXMenuOpened" else { return nil }
-        
-        // Debug: Print title element attributes if we have the element
-        if let element = element {
-            //print("🔍 Debugging Title Element:")
-            //AXElementDebugger.debugTitleElement(element)
-            
-            //print("🔍 Debugging Top Level Element:")
-            //AXElementDebugger.debugTopLevelElement(element)
-        }
         
         // Extract basic information
         let children = event["AXChildren"] as? [String] ?? []
         let visibleChildren = event["AXVisibleChildren"] as? [String] ?? []
         let itemCount = children.count
-        let visibleItemCount = visibleChildren.count
         
         // Parse position and size
-        let position = parsePosition(from: event)
         let size = parseSize(from: event)
         
         // Determine menu type based on size and item count
@@ -48,17 +38,16 @@ class AXMenuOpenedParser {
         
         // Try to get menu title and parent title
         let title = extractMenuTitle(from: event, element: element)
-        let parentTitle = extractParentTitle(from: event)
         
-        return MenuInfo(
-            title: title,
-            parentTitle: parentTitle,
-            itemCount: itemCount,
-            visibleItemCount: visibleItemCount,
-            position: position,
-            size: size,
-            menuType: menuType
-        )
+        // Extract options from children elements
+        let options = extractOptionsFromChildren(from: event, element: element)
+        
+        return [
+            "title": title ?? "unknown",
+            "menuType": menuType,
+            "options": options,
+            "command": event["command"] ?? "unknown"
+        ]
     }
     
     /// Generate human-readable description of the menu
@@ -243,6 +232,44 @@ class AXMenuOpenedParser {
         }
         
         return nil
+    }
+    
+    private static func extractOptionsFromChildren(from event: [String: Any], element: AXUIElement?) -> [String] {
+        var options: [String] = []
+        
+        // Try to get children from the actual element first
+        if let element = element {
+            var children: CFTypeRef?
+            let result = AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &children)
+            
+            if result == .success, let childrenArray = children as? [AXUIElement] {
+                for child in childrenArray {
+                    var title: CFTypeRef?
+                    let titleResult = AXUIElementCopyAttributeValue(child, kAXTitleAttribute as CFString, &title)
+                    
+                    if titleResult == .success, let titleString = title as? String, !titleString.isEmpty {
+                        options.append(titleString)
+                    } else {
+                        // Fallback to role description if no title
+                        var roleDesc: CFTypeRef?
+                        let roleResult = AXUIElementCopyAttributeValue(child, kAXRoleDescriptionAttribute as CFString, &roleDesc)
+                        
+                        if roleResult == .success, let roleDescString = roleDesc as? String {
+                            options.append(roleDescString)
+                        }
+                    }
+                }
+            }
+        }
+        
+        // If we didn't get options from element, try to parse from event
+        if options.isEmpty {
+            if let children = event["AXChildren"] as? [String] {
+                options = children.filter { !$0.isEmpty }
+            }
+        }
+        
+        return options
     }
 }
 
