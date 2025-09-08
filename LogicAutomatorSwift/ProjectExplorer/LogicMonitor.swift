@@ -578,7 +578,7 @@ class LogicMonitor: ObservableObject {
         
         // Send to server asynchronously
         DispatchQueue.global(qos: .background).async { [weak self] in
-            //self?.sendNotificationsToServer(notificationsToSend)
+            self?.sendNotificationsToServer(notificationsToSend)
         }
     }
     
@@ -826,7 +826,8 @@ class LogicMonitor: ObservableObject {
             var fileData: [String: Any] = [
                 "client_id": clientId,
                 "session_id": sessionId ?? "unknown",
-                "events": []
+                "events": [],
+                "system_info": SystemInfoUtil.getLightweightSystemReport()
             ]
             
             if !content.isEmpty {
@@ -869,7 +870,8 @@ class LogicMonitor: ObservableObject {
             var fileData: [String: Any] = [
                 "client_id": clientId,
                 "session_id": sessionId ?? "unknown",
-                "events": []
+                "events": [],
+                "system_info": SystemInfoUtil.getLightweightSystemReport()
             ]
             
             if !content.isEmpty {
@@ -901,11 +903,12 @@ class LogicMonitor: ObservableObject {
         guard let fileURL = sessionFileURL else { return }
         
         do {
-            // Create file with upload format structure
+            // Create file with upload format structure (including system info)
             let initialData: [String: Any] = [
                 "client_id": clientId,
                 "session_id": sessionId ?? "unknown",
-                "events": []
+                "events": [],
+                "system_info": SystemInfoUtil.getLightweightSystemReport()
             ]
             
             let jsonData = try JSONSerialization.data(withJSONObject: initialData, options: [.prettyPrinted])
