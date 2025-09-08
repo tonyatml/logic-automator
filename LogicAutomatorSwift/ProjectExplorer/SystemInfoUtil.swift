@@ -275,20 +275,61 @@ class SystemInfoUtil {
             return projectInfo
         }
         
-        // Try to get the main window title (which usually contains project name)
-        // Note: NSRunningApplication doesn't have direct access to windows
-        // We'll use the localizedName as a fallback
-        let appName = logicApp.localizedName ?? "Logic Pro"
-        projectInfo["name"] = appName.contains(".logicx") ? appName : "Untitled Project"
+        // Try to get Logic Pro AXUIElement
+        if let logicAXApp = LogicUtil.getLogicApp() {
+            // Get all windows from Logic Pro
+            var windows: CFTypeRef?
+            let result = AXUIElementCopyAttributeValue(logicAXApp, kAXWindowsAttribute as CFString, &windows)
+            
+            if result == .success, let windowsArray = windows as? [AXUIElement] {
+                print("🔍 Found \(windowsArray.count) Logic Pro windows")
+                
+                for (index, window) in windowsArray.enumerated() {
+                    print("🔍 === Logic Pro Window \(index + 1) ===")
+                    AXElementDebugger.printAllElementAttributes(window, title: "Logic Pro Window \(index + 1)")
+                    
+                    // Try to get window title
+                    var title: CFTypeRef?
+                    let titleResult = AXUIElementCopyAttributeValue(window, kAXTitleAttribute as CFString, &title)
+                    
+                    if titleResult == .success, let titleString = title as? String {
+                        print("🔍 Window \(index + 1) title: \(titleString)")
+                        
+                        // Try to get document path (AXDocument attribute)
+                        var document: CFTypeRef?
+                        let documentResult = AXUIElementCopyAttributeValue(window, kAXDocumentAttribute as CFString, &document)
+                        
+                        if documentResult == .success, let documentString = document as? String {
+                            print("🔍 Window \(index + 1) document: \(documentString)")
+                            
+                            // Extract project name from document path
+                            if let url = URL(string: documentString) {
+                                let projectName = url.lastPathComponent.replacingOccurrences(of: ".logicx", with: "")
+                                projectInfo["name"] = projectName
+                                projectInfo["path"] = url.path
+                                print("🔍 Extracted project name: \(projectName)")
+                                print("🔍 Extracted project path: \(url.path)")
+                                break
+                            }
+                        }
+                        
+                        // Fallback: Use the first window with a meaningful title
+                        if !titleString.isEmpty && titleString != "Logic Pro" && projectInfo["name"] == nil {
+                            projectInfo["name"] = titleString
+                            projectInfo["path"] = "Path extracted from window title"
+                        }
+                    }
+                }
+            } else {
+                print("❌ Failed to get Logic Pro windows: \(result)")
+            }
+        }
         
-        // Try to extract project path from app name
-        if appName.contains(".logicx") {
-            // Extract project name from title
-            let projectName = appName.replacingOccurrences(of: ".logicx", with: "")
-            projectInfo["name"] = projectName
+        // Fallback to app name if no window title found
+        if projectInfo["name"] == nil {
+            let appName = logicApp.localizedName ?? "Logic Pro"
+            projectInfo["name"] = appName.contains(".logicx") ? appName : "Untitled Project"
             projectInfo["path"] = "Path not accessible via NSRunningApplication"
-        } else {
-            projectInfo["path"] = "Unsaved project"
         }
         
         // Try to get track count and track names
