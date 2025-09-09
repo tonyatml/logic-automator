@@ -234,7 +234,7 @@ struct ProjectExplorerView: View {
                 }
             }
             
-            SystemInfoUtil.printLightweightSystemInfo()
+            // SystemInfoUtil.printLightweightSystemInfo()
         }
     }
 }

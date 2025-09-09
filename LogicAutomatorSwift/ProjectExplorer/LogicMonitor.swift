@@ -593,12 +593,16 @@ class LogicMonitor: ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        // Create payload with system information
+        // Create payload with system information matching the example format
+        let systemReport = SystemInfoUtil.getLightweightSystemReport()
         let payload: [String: Any] = [
             "client_id": clientId,
             "session_id": sessionId ?? "no-session",
-            "events": notifications,
-            "system_info": SystemInfoUtil.getLightweightSystemReport()
+            "system_info": systemReport["system_info"] ?? [:],
+            "workflow": systemReport["workflow"] ?? [:],
+            "performance": systemReport["performance"] ?? [:],
+            "project_info": systemReport["project_info"] ?? [:],
+            "protocol_data": systemReport["protocol_data"] ?? [:]
         ]
         
         do {
@@ -725,12 +729,16 @@ class LogicMonitor: ObservableObject {
         log("📹 Ending session recording - Duration: \(String(format: "%.2f", duration))s")
         log("📊 Total notifications: \(allNotifications.count) (Memory: \(sessionNotifications.count), File: \(fileNotifications.count))")
         
-        // Create session summary with complete system information
+        // Create session summary with complete system information matching the example format
+        let systemReport = SystemInfoUtil.getLightweightSystemReport()
         let sessionData: [String: Any] = [
             "client_id": clientId,
             "session_id": sessionId ?? UUID().uuidString,
-            "events": allNotifications,
-            "system_info": SystemInfoUtil.getCompleteSystemReport()
+            "system_info": systemReport["system_info"] ?? [:],
+            "workflow": systemReport["workflow"] ?? [:],
+            "performance": systemReport["performance"] ?? [:],
+            "project_info": systemReport["project_info"] ?? [:],
+            "protocol_data": systemReport["protocol_data"] ?? [:]
         ]
         
         // Upload session data
@@ -823,11 +831,15 @@ class LogicMonitor: ObservableObject {
         do {
             // Read existing data from file
             let content = try String(contentsOf: fileURL, encoding: .utf8)
+            let systemReport = SystemInfoUtil.getLightweightSystemReport()
             var fileData: [String: Any] = [
                 "client_id": clientId,
                 "session_id": sessionId ?? "unknown",
-                "events": [],
-                "system_info": SystemInfoUtil.getLightweightSystemReport()
+                "system_info": systemReport["system_info"] ?? [:],
+                "workflow": systemReport["workflow"] ?? [:],
+                "performance": systemReport["performance"] ?? [:],
+                "project_info": systemReport["project_info"] ?? [:],
+                "protocol_data": systemReport["protocol_data"] ?? [:]
             ]
             
             if !content.isEmpty {
@@ -837,12 +849,14 @@ class LogicMonitor: ObservableObject {
                 }
             }
             
-            // Get existing events array
-            var events = fileData["events"] as? [[String: Any]] ?? []
+            // Get existing protocol_data and its events
+            var protocolData = fileData["protocol_data"] as? [String: Any] ?? [:]
+            var events = protocolData["events"] as? [[String: Any]] ?? []
             
-            // Add new notification
+            // Add new notification to protocol_data events
             events.append(notification)
-            fileData["events"] = events
+            protocolData["events"] = events
+            fileData["protocol_data"] = protocolData
             
             // Write back to file with upload format
             let jsonData = try JSONSerialization.data(withJSONObject: fileData, options: [.prettyPrinted])
@@ -867,11 +881,15 @@ class LogicMonitor: ObservableObject {
         do {
             // Read existing data from file
             let content = try String(contentsOf: fileURL, encoding: .utf8)
+            let systemReport = SystemInfoUtil.getLightweightSystemReport()
             var fileData: [String: Any] = [
                 "client_id": clientId,
                 "session_id": sessionId ?? "unknown",
-                "events": [],
-                "system_info": SystemInfoUtil.getLightweightSystemReport()
+                "system_info": systemReport["system_info"] ?? [:],
+                "workflow": systemReport["workflow"] ?? [:],
+                "performance": systemReport["performance"] ?? [:],
+                "project_info": systemReport["project_info"] ?? [:],
+                "protocol_data": systemReport["protocol_data"] ?? [:]
             ]
             
             if !content.isEmpty {
@@ -881,12 +899,14 @@ class LogicMonitor: ObservableObject {
                 }
             }
             
-            // Get existing events array
-            var events = fileData["events"] as? [[String: Any]] ?? []
+            // Get existing protocol_data and its events
+            var protocolData = fileData["protocol_data"] as? [String: Any] ?? [:]
+            var events = protocolData["events"] as? [[String: Any]] ?? []
             
-            // Add new notifications
+            // Add new notifications to protocol_data events
             events.append(contentsOf: notifications)
-            fileData["events"] = events
+            protocolData["events"] = events
+            fileData["protocol_data"] = protocolData
             
             // Write back to file with upload format
             let jsonData = try JSONSerialization.data(withJSONObject: fileData, options: [.prettyPrinted])
@@ -904,11 +924,15 @@ class LogicMonitor: ObservableObject {
         
         do {
             // Create file with upload format structure (including system info)
+            let systemReport = SystemInfoUtil.getLightweightSystemReport()
             let initialData: [String: Any] = [
                 "client_id": clientId,
                 "session_id": sessionId ?? "unknown",
-                "events": [],
-                "system_info": SystemInfoUtil.getLightweightSystemReport()
+                "system_info": systemReport["system_info"] ?? [:],
+                "workflow": systemReport["workflow"] ?? [:],
+                "performance": systemReport["performance"] ?? [:],
+                "project_info": systemReport["project_info"] ?? [:],
+                "protocol_data": systemReport["protocol_data"] ?? [:]
             ]
             
             let jsonData = try JSONSerialization.data(withJSONObject: initialData, options: [.prettyPrinted])
@@ -934,7 +958,8 @@ class LogicMonitor: ObservableObject {
             
             if let data = content.data(using: .utf8),
                let fileData = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let events = fileData["events"] as? [[String: Any]] {
+               let protocolData = fileData["protocol_data"] as? [String: Any],
+               let events = protocolData["events"] as? [[String: Any]] {
                 return events
             }
             

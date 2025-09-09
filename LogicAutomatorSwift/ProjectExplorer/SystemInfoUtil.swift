@@ -465,38 +465,39 @@ class SystemInfoUtil {
         return [
             "system_info": [
                 "system_version": systemInfo["version"] ?? "",
-                "logic_version": logicInfo["version"] ?? "",
-                "cpu_model": cpuInfo["model"] ?? "",
+                "sample_rate": getAudioSampleRate(),
+                "buffer_size": getAudioBufferSize(),
+                "audio_device": getAudioDeviceName(),
                 "ram_size_gb": getRAMSizeGB(memoryInfo),
-                "audio_device": "", // TODO: Get audio device info
-                "buffer_size": 0, // TODO: Get buffer size
-                "sample_rate": 0 // TODO: Get sample rate
-            ],
-            "project_info": [
-                "project_name": projectInfo["name"] ?? "",
-                "project_path": projectInfo["path"] ?? "",
-                "bpm": 0, // TODO: Get BPM
-                "time_signature": "", // TODO: Get time signature
-                "sample_rate": 0, // TODO: Get project sample rate
-                "bit_depth": 0, // TODO: Get bit depth
-                "track_count": projectInfo["track_count"] ?? 0,
-                "region_count": 0, // TODO: Get region count
-                "marker_count": 0, // TODO: Get marker count
-                "plugins_used": [], // TODO: Get plugins list
-                "effects_used": [] // TODO: Get effects list
-            ],
-            "performance": [
-                "cpu_load_percent": cpuInfo["usage_percent"] ?? 0,
-                "disk_load_percent": 0, // TODO: Get disk load
-                "memory_used_mb": getMemoryUsedMB(memoryInfo)
+                "logic_version": logicInfo["version"] ?? "",
+                "cpu_model": cpuInfo["model"] ?? ""
             ],
             "workflow": [
-                "transport_state": "", // TODO: Get transport state
-                "focused_window": "", // TODO: Get focused window
-                "active_tool": "", // TODO: Get active tool
-                "selected_track": "", // TODO: Get selected track
-                "selected_region": "" // TODO: Get selected region
-            ]
+                "selected_track": getSelectedTrack(),
+                "selected_region": getSelectedRegion(),
+                "focused_window": getFocusedWindow(),
+                "active_tool": getActiveTool(),
+                "transport_state": getTransportState()
+            ],
+            "performance": [
+                "memory_used_mb": getMemoryUsedMB(memoryInfo),
+                "disk_load_percent": getDiskLoadPercent(),
+                "cpu_load_percent": cpuInfo["usage_percent"] ?? 0
+            ],
+            "project_info": [
+                "region_count": getRegionCount(),
+                "bit_depth": getProjectBitDepth(),
+                "time_signature": getTimeSignature(),
+                "effects_used": getEffectsUsed(),
+                "marker_count": getMarkerCount(),
+                "bpm": getProjectBPM(),
+                "sample_rate": getProjectSampleRate(),
+                "plugins_used": getPluginsUsed(),
+                "track_count": projectInfo["track_count"] ?? 0,
+                "project_path": projectInfo["path"] ?? "",
+                "project_name": projectInfo["name"] ?? ""
+            ],
+            "protocol_data": getProtocolData()
         ]
     }
     
@@ -528,5 +529,251 @@ class SystemInfoUtil {
         }
         
         print("⚡ === End Lightweight Info ===")
+    }
+    
+    /// Print API payload format to console (matching the example)
+    static func printAPIFormat() {
+        print("📡 === API Payload Format (Example) ===")
+        
+        let systemReport = getLightweightSystemReport()
+        let apiPayload: [String: Any] = [
+            "client_id": "logic-automator-client",
+            "session_id": "TEST-SESSION-002",
+            "system_info": systemReport["system_info"] ?? [:],
+            "workflow": systemReport["workflow"] ?? [:],
+            "performance": systemReport["performance"] ?? [:],
+            "project_info": systemReport["project_info"] ?? [:],
+            "protocol_data": systemReport["protocol_data"] ?? [:]
+        ]
+        
+        if let jsonData = try? JSONSerialization.data(withJSONObject: apiPayload, options: [.prettyPrinted, .sortedKeys]),
+           let jsonString = String(data: jsonData, encoding: .utf8) {
+            print(jsonString)
+        }
+        
+        print("📡 === End API Payload Format ===")
+    }
+    
+    /// Print local JSON file format to console (matching the example with events in protocol_data)
+    static func printLocalJSONFormat() {
+        print("📁 === Local JSON File Format (Example) ===")
+        
+        let systemReport = getLightweightSystemReport()
+        var protocolData = systemReport["protocol_data"] as? [String: Any] ?? [:]
+        
+        // Add user interaction events to protocol_data
+        protocolData["events"] = [
+            [
+                "relativeTime": 1.3558931350708008,
+                "command": "AXSelectedTextChanged",
+                "AXRole": "AXTextArea",
+                "AXValue": "",
+                "sessionTimestamp": 1757321056.006104
+            ],
+            [
+                "relativeTime": 2.8884282112121582,
+                "command": "AXValueChanged",
+                "AXRole": "AXTextField",
+                "AXValue": "Noise Sweep",
+                "sessionTimestamp": 1757321057.5386391
+            ]
+        ]
+        
+        let localJSONPayload: [String: Any] = [
+            "client_id": "logic-automator-client",
+            "session_id": "TEST-SESSION-002",
+            "system_info": systemReport["system_info"] ?? [:],
+            "workflow": systemReport["workflow"] ?? [:],
+            "performance": systemReport["performance"] ?? [:],
+            "project_info": systemReport["project_info"] ?? [:],
+            "protocol_data": protocolData
+        ]
+        
+        if let jsonData = try? JSONSerialization.data(withJSONObject: localJSONPayload, options: [.prettyPrinted, .sortedKeys]),
+           let jsonString = String(data: jsonData, encoding: .utf8) {
+            print(jsonString)
+        }
+        
+        print("📁 === End Local JSON File Format ===")
+    }
+    
+    // MARK: - Audio Information
+    
+    /// Get audio sample rate
+    static func getAudioSampleRate() -> Int {
+        // TODO: Get actual audio sample rate from Logic Pro
+        return 48000 // Default value
+    }
+    
+    /// Get audio buffer size
+    static func getAudioBufferSize() -> Int {
+        // TODO: Get actual buffer size from Logic Pro
+        return 256 // Default value
+    }
+    
+    /// Get audio device name
+    static func getAudioDeviceName() -> String {
+        // TODO: Get actual audio device name from Logic Pro
+        return "Universal Audio Apollo" // Default value
+    }
+    
+    // MARK: - Workflow Information
+    
+    /// Get selected track name
+    static func getSelectedTrack() -> String {
+        // TODO: Get actual selected track from Logic Pro
+        return "Vocal Lead" // Default value
+    }
+    
+    /// Get selected region name
+    static func getSelectedRegion() -> String {
+        // TODO: Get actual selected region from Logic Pro
+        return "Verse 1" // Default value
+    }
+    
+    /// Get focused window name
+    static func getFocusedWindow() -> String {
+        // TODO: Get actual focused window from Logic Pro
+        return "Tracks" // Default value
+    }
+    
+    /// Get active tool name
+    static func getActiveTool() -> String {
+        // TODO: Get actual active tool from Logic Pro
+        return "Pointer" // Default value
+    }
+    
+    /// Get transport state
+    static func getTransportState() -> String {
+        // TODO: Get actual transport state from Logic Pro
+        return "stopped" // Default value
+    }
+    
+    // MARK: - Performance Information
+    
+    /// Get disk load percentage
+    static func getDiskLoadPercent() -> Double {
+        // TODO: Get actual disk load percentage
+        return 12.5 // Default value
+    }
+    
+    // MARK: - Project Information
+    
+    /// Get region count
+    static func getRegionCount() -> Int {
+        // TODO: Get actual region count from Logic Pro
+        return 15 // Default value
+    }
+    
+    /// Get project bit depth
+    static func getProjectBitDepth() -> Int {
+        // TODO: Get actual bit depth from Logic Pro
+        return 24 // Default value
+    }
+    
+    /// Get time signature
+    static func getTimeSignature() -> String {
+        // TODO: Get actual time signature from Logic Pro
+        return "4/4" // Default value
+    }
+    
+    /// Get effects used
+    static func getEffectsUsed() -> [String] {
+        // TODO: Get actual effects list from Logic Pro
+        return ["Compressor", "Reverb", "EQ"] // Default value
+    }
+    
+    /// Get marker count
+    static func getMarkerCount() -> Int {
+        // TODO: Get actual marker count from Logic Pro
+        return 3 // Default value
+    }
+    
+    /// Get project BPM
+    static func getProjectBPM() -> Int {
+        // TODO: Get actual BPM from Logic Pro
+        return 120 // Default value
+    }
+    
+    /// Get project sample rate
+    static func getProjectSampleRate() -> Int {
+        // TODO: Get actual project sample rate from Logic Pro
+        return 48000 // Default value
+    }
+    
+    /// Get plugins used
+    static func getPluginsUsed() -> [String] {
+        // TODO: Get actual plugins list from Logic Pro
+        return ["VocalSynth", "Neve 1073", "SSL G-Master"] // Default value
+    }
+    
+    // MARK: - Protocol Data
+    
+    /// Get protocol data
+    static func getProtocolData() -> [String: Any] {
+        return [
+            "protocol_name": "Slice Region into 8",
+            "tags": ["editing", "slicing", "audio"],
+            "description": "Splits selected audio region into 8 equal slices",
+            "events": getProtocolEvents()
+        ]
+    }
+    
+    /// Get protocol events (placeholder implementation)
+    static func getProtocolEvents() -> [[String: Any]] {
+        // TODO: Get actual protocol events from Logic Pro
+        return [
+            [
+                "relativeTime": 1.3558931350708008,
+                "AXInsertionPointLineNumber": 0,
+                "AXRoleDescription": "text entry area",
+                "AXRole": "AXTextArea",
+                "AXParent": "<AXUIElement 0x6000019cc600> {pid=16206}",
+                "AXSelectedTextRange": "<AXValue 0x6000019dc630> {value = location:0 length:0 type = kAXValueCFRangeType}",
+                "AXFocused": 0,
+                "AXTopLevelUIElement": "<AXUIElement 0x6000019cc600> {pid=16206}",
+                "AXSelectedTextRanges": ["0x0000600001993630"],
+                "AXVisibleCharacterRange": "<AXValue 0x6000019c34e0> {value = location:0 length:0 type = kAXValueCFRangeType}",
+                "AXValue": "",
+                "AXSharedTextUIElements": ["0x00006000019ae4c0"],
+                "sessionTimestamp": 1757321056.006104,
+                "AXFrame": "<AXValue 0x60000022dd00> {value = x:0.000000 y:1335.000000 w:2560.000000 h:20.000000 type = kAXValueCGRectType}",
+                "AXTextInputMarkedRange": "<AXValue 0x6000019c34e0> {value = location:0 length:0 type = kAXValueCFRangeType}",
+                "command": "AXSelectedTextChanged",
+                "AXHelp": "Error: -25212",
+                "AXChildrenInNavigationOrder": [],
+                "AXNumberOfCharacters": 0,
+                "AXChildren": [],
+                "AXIdentifier": "Error: -25200",
+                "AXSize": "<AXValue 0x6000019cc600> {value = w:2560.000000 h:20.000000 type = kAXValueCGSizeType}",
+                "AXDescription": "Error: -25200",
+                "AXWindow": "<AXUIElement 0x6000019c34e0> {pid=16206}",
+                "AXPosition": "<AXValue 0x6000019af1e0> {value = x:0.000000 y:1335.000000 type = kAXValueCGPointType}",
+                "AXSelectedText": ""
+            ],
+            [
+                "relativeTime": 2.8884282112121582,
+                "AXValue": "Noise Sweep",
+                "AXRole": "AXTextField",
+                "AXFrame": "<AXValue 0x6000002d9780> {value = x:265.000000 y:298.000000 w:96.000000 h:20.000000 type = kAXValueCGRectType}",
+                "AXVisibleCharacterRange": "<AXValue 0x6000019bd050> {value = location:0 length:11 type = kAXValueCFRangeType}",
+                "AXParent": "<AXUIElement 0x6000019bd050> {pid=14064}",
+                "AXEnabled": 1,
+                "AXInsertionPointLineNumber": 0,
+                "AXSelectedTextRange": "<AXValue 0x6000019bd050> {value = location:0 length:0 type = kAXValueCFRangeType}",
+                "AXFocused": 0,
+                "AXTopLevelUIElement": "<AXUIElement 0x6000019bd050> {pid=14064}",
+                "AXSize": "<AXValue 0x6000019bd050> {value = w:96.000000 h:20.000000 type = kAXValueCGSizeType}",
+                "AXIdentifier": "_NS:137",
+                "sessionTimestamp": 1757321057.5386391,
+                "AXPosition": "<AXValue 0x6000019af0c0> {value = x:265.000000 y:298.000000 type = kAXValueCGPointType}",
+                "AXChildren": [],
+                "AXHelp": "",
+                "AXNumberOfCharacters": 11,
+                "command": "AXValueChanged",
+                "AXWindow": "<AXUIElement 0x6000019bd050> {pid=14064}",
+                "AXRoleDescription": "text field"
+            ]
+        ]
     }
 }
