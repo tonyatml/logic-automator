@@ -423,7 +423,7 @@ struct ProjectExplorerView: View {
             let jsonData = try JSONSerialization.data(withJSONObject: protocolDataDict, options: [.prettyPrinted, .sortedKeys])
             try jsonData.write(to: fileURL)
             
-            print("✅ Protocol saved to: \(fileURL.path)")
+            monitor.log("✅ Protocol saved to: \(fileURL.path)")
             
             // Automatically upload protocol to server after saving locally
             uploadProtocolToServer(protocolDataDict)
@@ -456,7 +456,7 @@ struct ProjectExplorerView: View {
             
             let task = URLSession.shared.dataTask(with: request) { data, response, error in
                 if let error = error {
-                    print("❌ Protocol upload failed: \(error.localizedDescription)")
+                    monitor.log("❌ Protocol upload failed: \(error.localizedDescription)")
                     return
                 }
                 
@@ -466,14 +466,14 @@ struct ProjectExplorerView: View {
                     if httpResponse.statusCode == 200 {
                         monitor.log("✅ Protocol successfully uploaded to server")
                     } else {
-                        print("❌ Protocol upload returned status code: \(httpResponse.statusCode)")
+                        monitor.log("❌ Protocol upload returned status code: \(httpResponse.statusCode)")
                     }
                 }
             }
             
             task.resume()
         } catch {
-            print("❌ Failed to serialize protocol data: \(error)")
+            monitor.log("❌ Failed to serialize protocol data: \(error)")
         }
     }
 }
