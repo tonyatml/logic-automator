@@ -672,8 +672,12 @@ class LogicMonitor: ObservableObject {
         recordedEventsCount = 0
         recordingDuration = 0
         
-        // Reset session start time for accurate duration calculation
+        // Clear previous session data when starting a new learning session
+        // This ensures clean state for new recording
+        sessionNotifications.removeAll()
         sessionStartTime = Date()
+        sessionFileURL = nil
+        sessionId = nil
         
         // Start monitoring if not already active
         if !isMonitoring {
@@ -824,11 +828,9 @@ class LogicMonitor: ObservableObject {
         // Upload session data
         uploadSessionToServer(sessionData)
         
-        // Clear session data
-        sessionNotifications.removeAll()
-        sessionStartTime = nil
-        sessionFileURL = nil
-        sessionId = nil
+        // Keep session data for protocol saving and future reference
+        // Data will only be cleared when user starts a new learning session
+        log("📋 Session data preserved - will be cleared on next Start Learning")
     }
     
     /// Upload complete session data to server
@@ -850,14 +852,14 @@ class LogicMonitor: ObservableObject {
             
             log("📦 Session data size: \(jsonData.count) bytes")
             
-            let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            let task = URLSession.shared.dataTask(with: request) {[weak self] data, response, error in
                 if let error = error {
-                    self.log("❌ Session upload failed: \(error.localizedDescription)")
+                    self?.log("❌ Session upload failed: \(error.localizedDescription)")
                     return
                 }
                 
                 if let httpResponse = response as? HTTPURLResponse {
-                    self.log("✅ Session upload response: \(httpResponse.statusCode)")
+                    self?.log("✅ Session upload response: \(httpResponse.statusCode)")
                 }
                 
                 if let httpResponse = response as? HTTPURLResponse {
@@ -866,12 +868,12 @@ class LogicMonitor: ObservableObject {
                     
                     if httpResponse.statusCode == 200 {
                         if let events = sessionData["events"] as? [[String: Any]] {
-                            print("✅ Successfully uploaded session with \(events.count) events")
+                            self?.log("✅ Successfully uploaded session with \(events.count) events")
                         } else {
                             print("✅ Successfully uploaded session")
                         }
                     } else {
-                        print("❌ Session upload returned status code: \(httpResponse.statusCode)")
+                        self?.log("❌ Session upload returned status code: \(httpResponse.statusCode)")
                     }
                 }
                 
