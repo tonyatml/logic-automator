@@ -697,13 +697,11 @@ class LogicMonitor: ObservableObject {
         isLearning = false
         stopRecordingTimer()
         
-        // Stop monitoring to prevent further events
+        // Stop monitoring to prevent further events (this will also upload session data)
         if isMonitoring {
             stopMonitoring()
-        }
-        
-        // Upload session data to server when stopping learning
-        if sessionRecordingEnabled && sessionStartTime != nil {
+        } else if sessionRecordingEnabled && sessionStartTime != nil {
+            // If monitoring is not active but we have session data, upload it
             log("📤 Uploading session data to server...")
             endSessionRecording()
         } else {
