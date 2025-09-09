@@ -15,6 +15,9 @@ class LogicMonitor: ObservableObject {
     @Published var notificationCount: Int = 0
     @Published var currentStatus = "Not started"
     @Published var logicProConnected = false
+    @Published var isLearning = false
+    @Published var recordingDuration: TimeInterval = 0
+    @Published var recordedEventsCount: Int = 0
     
     private var observer: AXObserver?
     private var runLoopSource: CFRunLoopSource?
@@ -38,6 +41,9 @@ class LogicMonitor: ObservableObject {
     private var sessionFileURL: URL?
     private var sessionId: String?
     private let maxMemoryNotifications = 1000 // Keep only last 1000 notifications in memory
+    
+    // Timer for recording duration
+    private var recordingTimer: Timer?
     
     // Callback function for AXObserver
     private let callback: AXObserverCallback = { observer, element, notification, context in
@@ -656,6 +662,54 @@ class LogicMonitor: ObservableObject {
         print("💡 To change server URL, modify the serverURL constant in LogicMonitor.swift")
     }
     
+    // MARK: - Learning Mode
+    
+    /// Start learning mode (recording user actions)
+    func startLearning() {
+        guard !isLearning else { return }
+        
+        isLearning = true
+        recordedEventsCount = 0
+        recordingDuration = 0
+        
+        // Start monitoring if not already active
+        if !isMonitoring {
+            startMonitoring()
+        }
+        
+        // Start recording timer
+        startRecordingTimer()
+        
+        log("🎓 Started learning mode - recording user actions")
+    }
+    
+    /// Stop learning mode
+    func stopLearning() {
+        guard isLearning else { return }
+        
+        isLearning = false
+        stopRecordingTimer()
+        
+        log("🎓 Stopped learning mode - recorded \(recordedEventsCount) events")
+    }
+    
+    /// Start recording timer
+    private func startRecordingTimer() {
+        recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            DispatchQueue.main.async {
+                if let startTime = self?.sessionStartTime {
+                    self?.recordingDuration = Date().timeIntervalSince(startTime)
+                }
+            }
+        }
+    }
+    
+    /// Stop recording timer
+    private func stopRecordingTimer() {
+        recordingTimer?.invalidate()
+        recordingTimer = nil
+    }
+    
     // MARK: - Session Recording
     
     /// Enable session recording mode
@@ -698,6 +752,11 @@ class LogicMonitor: ObservableObject {
         
         // Add to memory (with size limit)
         sessionNotifications.append(sessionNotification)
+        
+        // Update event count for learning mode
+        if isLearning {
+            recordedEventsCount += 1
+        }
         
         // Manage memory: keep only recent notifications in memory
         if sessionNotifications.count > maxMemoryNotifications {
