@@ -286,7 +286,7 @@ class SystemInfoUtil {
                 
                 for (index, window) in windowsArray.enumerated() {
                     print("🔍 === Logic Pro Window \(index + 1) ===")
-                    AXElementDebugger.printAllElementAttributes(window, title: "Logic Pro Window \(index + 1)")
+                    //AXElementDebugger.printAllElementAttributes(window, title: "Logic Pro Window \(index + 1)")
                     
                     // Try to get window title
                     var title: CFTypeRef?

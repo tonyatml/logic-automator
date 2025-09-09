@@ -672,6 +672,9 @@ class LogicMonitor: ObservableObject {
         recordedEventsCount = 0
         recordingDuration = 0
         
+        // Reset session start time for accurate duration calculation
+        sessionStartTime = Date()
+        
         // Start monitoring if not already active
         if !isMonitoring {
             startMonitoring()
@@ -690,7 +693,25 @@ class LogicMonitor: ObservableObject {
         isLearning = false
         stopRecordingTimer()
         
+        // Stop monitoring to prevent further events
+        if isMonitoring {
+            stopMonitoring()
+        }
+        
+        // Upload session data to server when stopping learning
+        if sessionRecordingEnabled && sessionStartTime != nil {
+            log("📤 Uploading session data to server...")
+            endSessionRecording()
+        } else {
+            log("⚠️ Session recording not enabled or no session data to upload")
+        }
+        
         log("🎓 Stopped learning mode - recorded \(recordedEventsCount) events")
+    }
+    
+    /// Get all recorded events for protocol saving
+    func getAllRecordedEvents() -> [[String: Any]] {
+        return readAllNotificationsFromFile()
     }
     
     /// Start recording timer
@@ -812,8 +833,10 @@ class LogicMonitor: ObservableObject {
     
     /// Upload complete session data to server
     private func uploadSessionToServer(_ sessionData: [String: Any]) {
+        log("🌐 Attempting to upload session data to: \(serverURL)")
+        
         guard let url = URL(string: serverURL) else {
-            log("❌ Invalid session server URL")
+            log("❌ Invalid session server URL: \(serverURL)")
             return
         }
         
@@ -825,10 +848,16 @@ class LogicMonitor: ObservableObject {
             let jsonData = try JSONSerialization.data(withJSONObject: sessionData, options: [.prettyPrinted, .sortedKeys])
             request.httpBody = jsonData
             
+            log("📦 Session data size: \(jsonData.count) bytes")
+            
             let task = URLSession.shared.dataTask(with: request) { data, response, error in
                 if let error = error {
-                    print("❌ Session upload failed: \(error.localizedDescription)")
+                    self.log("❌ Session upload failed: \(error.localizedDescription)")
                     return
+                }
+                
+                if let httpResponse = response as? HTTPURLResponse {
+                    self.log("✅ Session upload response: \(httpResponse.statusCode)")
                 }
                 
                 if let httpResponse = response as? HTTPURLResponse {

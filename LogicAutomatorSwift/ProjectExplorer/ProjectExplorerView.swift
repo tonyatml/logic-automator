@@ -135,6 +135,10 @@ struct ProjectExplorerView: View {
                     
                     // Save Protocol Button
                     Button(action: {
+                        // Stop learning mode before saving
+                        if monitor.isLearning {
+                            monitor.stopLearning()
+                        }
                         showingSaveProtocolModal = true
                     }) {
                         HStack {
@@ -313,9 +317,9 @@ struct ProjectExplorerView: View {
                     let success = saveProtocolToUserSelectedDirectory(protocolData, to: url)
                     if success {
                         toastMessage = "Protocol \"\(protocolData.name)\" saved successfully to \(url.lastPathComponent)"
-                        // Clear the recorded events after saving
+                        // Clear the recorded events count after saving, but keep the log output
                         monitor.recordedEventsCount = 0
-                        explorer.explorationResults = ""
+                        // explorer.explorationResults = "" // Don't clear log output
                     } else {
                         toastMessage = "Failed to save protocol \"\(protocolData.name)\""
                     }
@@ -388,6 +392,11 @@ struct ProjectExplorerView: View {
     private func saveProtocolToUserSelectedDirectory(_ protocolData: SaveProtocolModal.ProtocolData, to fileURL: URL) -> Bool {
         // Get current session data
         let systemReport = SystemInfoUtil.getLightweightSystemReport()
+        
+        // Get actual recorded events from LogicMonitor
+        let recordedEvents = monitor.getAllRecordedEvents()
+        
+        // Create protocol data with actual events
         var protocolDataDict: [String: Any] = [
             "protocol_name": protocolData.name,
             "tags": protocolData.tags,
@@ -399,7 +408,12 @@ struct ProjectExplorerView: View {
             "workflow": systemReport["workflow"] ?? [:],
             "performance": systemReport["performance"] ?? [:],
             "project_info": systemReport["project_info"] ?? [:],
-            "protocol_data": systemReport["protocol_data"] ?? [:]
+            "protocol_data": [
+                "protocol_name": protocolData.name,
+                "tags": protocolData.tags,
+                "description": protocolData.description,
+                "events": recordedEvents
+            ]
         ]
         
         // Add recorded events count
