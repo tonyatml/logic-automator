@@ -424,10 +424,56 @@ struct ProjectExplorerView: View {
             try jsonData.write(to: fileURL)
             
             print("✅ Protocol saved to: \(fileURL.path)")
+            
+            // Automatically upload protocol to server after saving locally
+            uploadProtocolToServer(protocolDataDict)
+            
             return true
         } catch {
             print("❌ Failed to save protocol: \(error)")
             return false
+        }
+    }
+    
+    private func uploadProtocolToServer(_ protocolData: [String: Any]) {
+        let serverURL = "https://logic-copilot-server.vercel.app/api/logs/batch"
+        
+        guard let url = URL(string: serverURL) else {
+            print("❌ Invalid server URL: \(serverURL)")
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: protocolData, options: [.prettyPrinted, .sortedKeys])
+            request.httpBody = jsonData
+            
+            print("📤 Uploading protocol to server...")
+            print("📦 Protocol data size: \(jsonData.count) bytes")
+            
+            let task = URLSession.shared.dataTask(with: request) { data, response, error in
+                if let error = error {
+                    print("❌ Protocol upload failed: \(error.localizedDescription)")
+                    return
+                }
+                
+                if let httpResponse = response as? HTTPURLResponse {
+                    print("📡 Protocol upload response: \(httpResponse.statusCode)")
+                    
+                    if httpResponse.statusCode == 200 {
+                        monitor.log("✅ Protocol successfully uploaded to server")
+                    } else {
+                        print("❌ Protocol upload returned status code: \(httpResponse.statusCode)")
+                    }
+                }
+            }
+            
+            task.resume()
+        } catch {
+            print("❌ Failed to serialize protocol data: \(error)")
         }
     }
 }

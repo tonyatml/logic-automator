@@ -127,10 +127,7 @@ class LogicMonitor: ObservableObject {
         // Flush any remaining notifications to server
         flushBuffer()
         
-        // End session recording if enabled
-        if sessionRecordingEnabled {
-            endSessionRecording()
-        }
+        // Note: Session data is preserved for protocol saving, not uploaded automatically
         
         log("🛑 Stopped monitoring Logic Pro events")
     }
@@ -544,7 +541,7 @@ class LogicMonitor: ObservableObject {
         return nil
     }
     
-    private func log(_ message: String) {
+    public func log(_ message: String) {
         print("[LogicMonitor] \(message)")
         logCallback?(message)
     }
@@ -697,15 +694,9 @@ class LogicMonitor: ObservableObject {
         isLearning = false
         stopRecordingTimer()
         
-        // Stop monitoring to prevent further events (this will also upload session data)
+        // Stop monitoring to prevent further events
         if isMonitoring {
             stopMonitoring()
-        } else if sessionRecordingEnabled && sessionStartTime != nil {
-            // If monitoring is not active but we have session data, upload it
-            log("📤 Uploading session data to server...")
-            endSessionRecording()
-        } else {
-            log("⚠️ Session recording not enabled or no session data to upload")
         }
         
         log("🎓 Stopped learning mode - recorded \(recordedEventsCount) events")
