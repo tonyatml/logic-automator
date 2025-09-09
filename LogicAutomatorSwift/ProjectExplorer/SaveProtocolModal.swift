@@ -16,12 +16,6 @@ struct SaveProtocolModal: View {
     
     let onSave: (ProtocolData) -> Void
     
-    enum ProtocolVisibility: String, CaseIterable {
-        case `private` = "Private"
-        case shared = "Shared"
-        case marketplace = "Marketplace"
-    }
-    
     struct ProtocolData {
         let name: String
         let tags: [String]
