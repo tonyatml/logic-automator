@@ -52,13 +52,13 @@ struct FilteringConfiguration {
         "AXSlider",               // Sliders
         "AXMenu",                 // Menus
         "AXCheckBox",             // Checkboxes
-        "AXRadioButton"           // Radio buttons
+        "AXRadioButton",          // Radio buttons
+        "AXGroup"                 // Groups (including track headers and other interactive containers)
     ]
     
     var noiseRoles: Set<String> = [
         "AXUnknown",              // Unknown elements
         "AXStaticText",           // Static text
-        "AXGroup",                // Groups (usually just containers)
         "AXScrollArea",           // Scroll areas
         "AXSplitGroup",           // Split panes
         "AXLayoutItem"            // Layout containers

@@ -87,7 +87,8 @@ struct FilterConfigurationModal: View {
         ]),
         ("Layout Elements", [
             "AXToolbar",
-            "AXTabGroup"
+            "AXTabGroup",
+            "AXGroup"
         ])
     ]
     
@@ -117,7 +118,8 @@ struct FilterConfigurationModal: View {
         "AXSlider",
         "AXMenu",
         "AXCheckBox",
-        "AXRadioButton"
+        "AXRadioButton",
+        "AXGroup"
     ]
     
     @State private var selectedEventTypes: Set<String>
