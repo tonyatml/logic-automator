@@ -377,7 +377,37 @@ class LogicMonitor: ObservableObject {
         
         let selectedElements = AXElementDebugger.getSelectedChild(element, maxDepth: 6)
         for elementInfo in selectedElements {
-            log(elementInfo)
+            log(elementInfo.infoString)
+            
+            // Create selectItem event for each selected element
+            var selectItemEvent = getElementAttributes(elementInfo.element)
+            selectItemEvent["command"] = "selectItem"
+            selectItemEvent["depth"] = elementInfo.depth
+            selectItemEvent["infoString"] = elementInfo.infoString
+            
+            // Add key attributes explicitly for better readability
+            var role: CFTypeRef?
+            AXUIElementCopyAttributeValue(elementInfo.element, kAXRoleAttribute as CFString, &role)
+            selectItemEvent["AXRole"] = role as? String ?? "Unknown"
+            
+            var roleDescription: CFTypeRef?
+            AXUIElementCopyAttributeValue(elementInfo.element, kAXRoleDescriptionAttribute as CFString, &roleDescription)
+            selectItemEvent["AXRoleDescription"] = roleDescription as? String ?? "Unknown"
+            
+            var title: CFTypeRef?
+            AXUIElementCopyAttributeValue(elementInfo.element, kAXTitleAttribute as CFString, &title)
+            selectItemEvent["AXTitle"] = title as? String ?? "No Title"
+            
+            var description: CFTypeRef?
+            AXUIElementCopyAttributeValue(elementInfo.element, kAXDescriptionAttribute as CFString, &description)
+            selectItemEvent["AXDescription"] = description as? String ?? "No Description"
+            
+            var identifier: CFTypeRef?
+            AXUIElementCopyAttributeValue(elementInfo.element, kAXIdentifierAttribute as CFString, &identifier)
+            selectItemEvent["AXIdentifier"] = identifier as? String ?? "No Identifier"
+            
+            // Record the selectItem event using the correct method
+            addToSessionRecording(selectItemEvent)
         }
     }
     

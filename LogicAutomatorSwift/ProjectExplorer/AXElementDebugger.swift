@@ -180,12 +180,16 @@ class AXElementDebugger {
         }
     }
     
+    /// Structure to hold selected element information
+    struct SelectedElementInfo {
+        let element: AXUIElement
+        let infoString: String
+        let depth: Int
+    }
+    
     /// Get selected child information as string (recursive)
-    static func getSelectedChild(_ element: AXUIElement, maxDepth: Int = 5, currentDepth: Int = 0) -> [String] {
-        var selectedElements: [String] = []
-        
-        // Add indentation based on depth
-        // let indent = String(repeating: "  ", count: currentDepth)
+    static func getSelectedChild(_ element: AXUIElement, maxDepth: Int = 5, currentDepth: Int = 0) -> [SelectedElementInfo] {
+        var selectedElements: [SelectedElementInfo] = []
         
         // Get basic element information
         var role: CFTypeRef?
@@ -211,7 +215,8 @@ class AXElementDebugger {
         // If this element is selected, add it to the results
         if selectedString == "Yes" {
             let elementInfo = "depth: \(currentDepth)📋 Role: \(roleString) | RoleDesc: \(roleDescriptionString) | Title: \(titleString) | Desc: \(descriptionString) | Selected: \(selectedString)"
-            selectedElements.append(elementInfo)
+            let selectedInfo = SelectedElementInfo(element: element, infoString: elementInfo, depth: currentDepth)
+            selectedElements.append(selectedInfo)
         }
         
         // Recursively check children if we haven't reached max depth
