@@ -24,7 +24,7 @@ class LogicMonitor: ObservableObject {
     private let logicBundleID = "com.apple.logic10"
     
     // Event filtering system
-    private let eventFilter: EventFilter
+    private var eventFilter: EventFilter
     @Published var filteringStats = FilteringStats()
     @Published var filteringEnabled = true
     
@@ -57,9 +57,30 @@ class LogicMonitor: ObservableObject {
     }
     
     init() {
-        // Initialize event filter with default configuration
+        // Initialize event filter with saved configuration or defaults
         var config = FilteringConfiguration()
-        config.strictMode = false // Start with moderate filtering
+        
+        // Load saved settings
+        if let savedEventTypes = UserDefaults.standard.stringArray(forKey: "FilterEventTypes"), !savedEventTypes.isEmpty {
+            config.meaningfulEventTypes = Set(savedEventTypes)
+        }
+        
+        if let savedElementTypes = UserDefaults.standard.stringArray(forKey: "FilterElementTypes"), !savedElementTypes.isEmpty {
+            config.meaningfulRoles = Set(savedElementTypes)
+        }
+        
+        let savedDebounceTime = UserDefaults.standard.double(forKey: "FilterDebounceTime")
+        if savedDebounceTime > 0 {
+            config.debounceTime = savedDebounceTime
+        }
+        
+        let savedMaxEvents = UserDefaults.standard.double(forKey: "FilterMaxEvents")
+        if savedMaxEvents > 0 {
+            config.maxEventsPerSecond = Int(savedMaxEvents)
+        }
+        
+        config.strictMode = UserDefaults.standard.bool(forKey: "FilterStrictMode")
+        
         self.eventFilter = EventFilter(configuration: config)
         
         checkLogicProStatus()
@@ -1121,6 +1142,13 @@ class LogicMonitor: ObservableObject {
     /// Cleanup filtering system to prevent memory buildup
     func cleanupFiltering() {
         eventFilter.cleanup()
+    }
+    
+    /// Update filter configuration
+    func updateFilterConfiguration(_ config: FilteringConfiguration) {
+        // Create new event filter with updated configuration
+        eventFilter = EventFilter(configuration: config)
+        log("🔧 Filter configuration updated with \(config.meaningfulEventTypes.count) event types and \(config.meaningfulRoles.count) element types")
     }
 }
 

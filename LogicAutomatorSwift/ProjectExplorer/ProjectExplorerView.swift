@@ -11,6 +11,7 @@ struct ProjectExplorerView: View {
     @State private var toastMessage = ""
     @State private var showingSaveDialog = false
     @State private var pendingProtocolData: SaveProtocolModal.ProtocolData?
+    @State private var showingFilterConfig = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -104,40 +105,6 @@ struct ProjectExplorerView: View {
                     .help("Save the recorded protocol")
                 }
                 
-                // Filtering Controls
-                HStack(spacing: 8) {
-                    // Toggle Filtering Button
-                    Button(action: {
-                        monitor.setFilteringEnabled(!monitor.filteringEnabled)
-                    }) {
-                        HStack {
-                            Image(systemName: monitor.filteringEnabled ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
-                            Text(monitor.filteringEnabled ? "Filtering On" : "Filtering Off")
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(monitor.filteringEnabled ? Color.blue : Color.gray)
-                        .foregroundColor(.white)
-                        .cornerRadius(6)
-                    }
-                    .help("Toggle event filtering to reduce noise")
-                    
-                    // Reset Stats Button
-                    Button(action: {
-                        monitor.resetFilteringStats()
-                    }) {
-                        HStack {
-                            Image(systemName: "chart.bar.xaxis")
-                            Text("Reset Stats")
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.orange)
-                        .foregroundColor(.white)
-                        .cornerRadius(6)
-                    }
-                    .help("Reset filtering statistics")
-                }
                 
                 Button(action: {
                     explorer.explorationResults = ""
@@ -281,15 +248,44 @@ struct ProjectExplorerView: View {
                             Text("Filtering Statistics:")
                                 .font(.headline)
                             
-                            Spacer()
-                            
-                            Button(action: {
-                                monitor.resetFilteringStats()
-                            }) {
-                                Image(systemName: "arrow.clockwise")
+                            // Filtering controls next to label
+                            HStack(spacing: 12) {
+                                // Filter Configuration Button
+                                Button(action: {
+                                    showingFilterConfig = true
+                                }) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "line.3.horizontal.decrease.circle.fill")
+                                        Text("Filter")
+                                    }
                                     .font(.caption)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.blue)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(4)
+                                }
+                                .help("Configure event filtering")
+                                
+                                // Reset Stats Button
+                                Button(action: {
+                                    monitor.resetFilteringStats()
+                                }) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "arrow.clockwise")
+                                        Text("Reset")
+                                    }
+                                    .font(.caption)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.orange)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(4)
+                                }
+                                .help("Reset filtering statistics")
                             }
-                            .help("Reset statistics")
+                            
+                            Spacer()
                         }
                         
                         let stats = monitor.filteringStats
@@ -377,6 +373,36 @@ struct ProjectExplorerView: View {
                     }
                 }
                 
+                // Filtering Toggle (when filtering is disabled)
+                if !monitor.filteringEnabled {
+                    HStack {
+                        Text("Event Filtering:")
+                            .font(.headline)
+                        
+                        Spacer()
+                        
+                        Button(action: {
+                            monitor.setFilteringEnabled(true)
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "line.3.horizontal.decrease.circle")
+                                    .font(.caption)
+                                Text("Enable Filtering")
+                                    .font(.caption)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(4)
+                        }
+                        .help("Enable event filtering to reduce noise")
+                    }
+                    .padding()
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .cornerRadius(8)
+                }
+                
                 // Log display
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
@@ -425,6 +451,9 @@ struct ProjectExplorerView: View {
             SaveProtocolModal(isPresented: $showingSaveProtocolModal) { protocolData in
                 saveProtocol(protocolData)
             }
+        }
+        .sheet(isPresented: $showingFilterConfig) {
+            FilterConfigurationModal(isPresented: $showingFilterConfig, monitor: monitor)
         }
         .fileExporter(
             isPresented: $showingSaveDialog,

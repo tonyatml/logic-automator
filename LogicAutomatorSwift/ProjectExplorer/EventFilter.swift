@@ -20,7 +20,7 @@ struct FilteringConfiguration {
     var maxEventsPerSecond: Int = 10
     var strictMode: Bool = false // More aggressive filtering
     
-    // Event type filtering settings
+    // Event type filtering settings - Default high-probability meaningful events
     var meaningfulEventTypes: Set<String> = [
         "AXMenuOpened",           // Menu operations
         "AXMenuClosed",           // Menu closing
@@ -28,9 +28,7 @@ struct FilteringConfiguration {
         "AXValueChanged",         // Value changes (needs further filtering)
         "AXFocusedUIElementChanged", // Focus changes (needs further filtering)
         "AXSelectedChildrenChanged", // Selection changes (needs further filtering)
-        "AXButtonPressed",        // Button clicks (if available)
-        "AXSliderValueChanged",   // Slider adjustments (if available)
-        "AXCheckBoxToggled"       // Checkbox state changes (if available)
+        "AXButtonPressed"         // Button clicks (if available)
     ]
     
     var noiseEventTypes: Set<String> = [
@@ -46,18 +44,15 @@ struct FilteringConfiguration {
         "AXResized"               // Element resizing
     ]
     
-    // UI element type filtering settings
+    // UI element type filtering settings - Default high-probability meaningful elements
     var meaningfulRoles: Set<String> = [
         "AXButton",               // Buttons
         "AXMenuItem",             // Menu items
         "AXTextField",            // Text input fields
         "AXSlider",               // Sliders
-        "AXCheckBox",             // Checkboxes
-        "AXRadioButton",          // Radio buttons
         "AXMenu",                 // Menus
-        "AXToolbar",              // Toolbars
-        "AXComboBox",             // Dropdown menus
-        "AXTabGroup"              // Tab controls
+        "AXCheckBox",             // Checkboxes
+        "AXRadioButton"           // Radio buttons
     ]
     
     var noiseRoles: Set<String> = [
