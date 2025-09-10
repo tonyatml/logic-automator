@@ -23,6 +23,11 @@ class LogicMonitor: ObservableObject {
     private var runLoopSource: CFRunLoopSource?
     private let logicBundleID = "com.apple.logic10"
     
+    // Event filtering system
+    private let eventFilter: EventFilter
+    @Published var filteringStats = FilteringStats()
+    @Published var filteringEnabled = true
+    
     // Log callback
     var logCallback: ((String) -> Void)?
     
@@ -52,6 +57,11 @@ class LogicMonitor: ObservableObject {
     }
     
     init() {
+        // Initialize event filter with default configuration
+        var config = FilteringConfiguration()
+        config.strictMode = false // Start with moderate filtering
+        self.eventFilter = EventFilter(configuration: config)
+        
         checkLogicProStatus()
     }
     
@@ -222,22 +232,20 @@ class LogicMonitor: ObservableObject {
         var elementAttributes = getElementAttributes(element)
         elementAttributes["command"] = notificationName
         
-        //guard let result = handleSpecificNotification(notificationName, element: element, events: elementAttributes) else {
-            //print("not supported: \(notification) yet")
-            //return
-        //}
-        
-        // Convert attributes dictionary to JSON string for display
-//        let elementDescription: String
-//        do {
-//            let jsonData = try JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys])
-//            elementDescription = String(data: jsonData, encoding: .utf8) ?? "{}"
-//        } catch {
-//            elementDescription = "{}"
-//        }
-        
-        // handle to serve the json string to the server
-        // print(elementDescription)
+        // Apply event filtering if enabled
+        if filteringEnabled {
+            let (shouldRecord, reason) = eventFilter.shouldRecordEvent(elementAttributes)
+            
+            if !shouldRecord {
+                // Log filtered event for debugging
+                let role = elementAttributes["AXRole"] as? String ?? "Unknown"
+                log("🚫 Filtered event: \(notificationName) | Role: \(role) | Reason: \(reason ?? "unknown")")
+                return
+            }
+            
+            // Add semantic information to the event
+            elementAttributes = eventFilter.semanticizeEvent(elementAttributes)
+        }
         
         // Add to session recording if enabled
         if sessionRecordingEnabled {
@@ -246,9 +254,7 @@ class LogicMonitor: ObservableObject {
             addToBuffer(elementAttributes)
         }
         
-        
-        
-        // Get role information
+        // Get role information for display
         var role: CFTypeRef?
         AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
         let roleString = role as? String ?? "Unknown"
@@ -258,15 +264,17 @@ class LogicMonitor: ObservableObject {
         AXUIElementCopyAttributeValue(element, kAXRoleDescriptionAttribute as CFString, &roleDescription)
         let roleDescriptionString = roleDescription as? String ?? "Unknown"
         
-        let message = "📢 Notification: \(notificationName) | Role: \(roleString) | RoleDesc: \(roleDescriptionString) "
+        let message = "📢 Notification: \(notificationName) | Role: \(roleString) | RoleDesc: \(roleDescriptionString)"
         
         DispatchQueue.main.async {
             self.lastNotification = message
             self.notificationCount += 1
+            
+            // Update filtering statistics
+            self.filteringStats = self.eventFilter.getStats()
         }
         
         log(message)
-        
     }
     
     /// Get all available attributes as a dictionary for analysis
@@ -1077,6 +1085,42 @@ class LogicMonitor: ObservableObject {
         let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         NSWorkspace.shared.open(documentsPath)
         log("📁 Opened Documents directory: \(documentsPath.path)")
+    }
+    
+    // MARK: - Event Filtering Control
+    
+    /// Enable or disable event filtering
+    func setFilteringEnabled(_ enabled: Bool) {
+        filteringEnabled = enabled
+        log("🔧 Event filtering \(enabled ? "enabled" : "disabled")")
+    }
+    
+    /// Get current filtering statistics
+    func getFilteringStats() -> FilteringStats {
+        return eventFilter.getStats()
+    }
+    
+    /// Reset filtering statistics
+    func resetFilteringStats() {
+        eventFilter.resetStats()
+        filteringStats = FilteringStats()
+        log("📊 Filtering statistics reset")
+    }
+    
+    /// Enable or disable debug mode for filtering
+    func setFilteringDebugMode(_ enabled: Bool) {
+        eventFilter.setDebugMode(enabled)
+        log("🐛 Filtering debug mode \(enabled ? "enabled" : "disabled")")
+    }
+    
+    /// Get raw events for debugging (only available in debug mode)
+    func getRawFilteredEvents() -> [[String: Any]] {
+        return eventFilter.getRawEvents()
+    }
+    
+    /// Cleanup filtering system to prevent memory buildup
+    func cleanupFiltering() {
+        eventFilter.cleanup()
     }
 }
 

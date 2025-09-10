@@ -104,6 +104,41 @@ struct ProjectExplorerView: View {
                     .help("Save the recorded protocol")
                 }
                 
+                // Filtering Controls
+                HStack(spacing: 8) {
+                    // Toggle Filtering Button
+                    Button(action: {
+                        monitor.setFilteringEnabled(!monitor.filteringEnabled)
+                    }) {
+                        HStack {
+                            Image(systemName: monitor.filteringEnabled ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                            Text(monitor.filteringEnabled ? "Filtering On" : "Filtering Off")
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(monitor.filteringEnabled ? Color.blue : Color.gray)
+                        .foregroundColor(.white)
+                        .cornerRadius(6)
+                    }
+                    .help("Toggle event filtering to reduce noise")
+                    
+                    // Reset Stats Button
+                    Button(action: {
+                        monitor.resetFilteringStats()
+                    }) {
+                        HStack {
+                            Image(systemName: "chart.bar.xaxis")
+                            Text("Reset Stats")
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.orange)
+                        .foregroundColor(.white)
+                        .cornerRadius(6)
+                    }
+                    .help("Reset filtering statistics")
+                }
+                
                 Button(action: {
                     explorer.explorationResults = ""
                     monitor.recordedEventsCount = 0
@@ -184,6 +219,40 @@ struct ProjectExplorerView: View {
                         }
                     }
                     
+                    // Event Filtering Status
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(monitor.filteringEnabled ? Color.blue : Color.gray)
+                            .frame(width: 12, height: 12)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Event Filtering")
+                                .font(.subheadline)
+                                .foregroundColor(monitor.filteringEnabled ? .blue : .gray)
+                            
+                            if monitor.filteringEnabled {
+                                let stats = monitor.filteringStats
+                                HStack(spacing: 8) {
+                                    Text("\(Int(stats.noiseReductionPercentage))% noise reduced")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    
+                                    Text("•")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    
+                                    Text("\(stats.filteredEvents)/\(stats.totalEvents) events")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            } else {
+                                Text("Disabled")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    
                     Spacer()
                 }
                 .padding()
@@ -202,6 +271,109 @@ struct ProjectExplorerView: View {
                             .background(Color(NSColor.textBackgroundColor))
                             .cornerRadius(8)
                             .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                
+                // Filtering Statistics (when filtering is enabled)
+                if monitor.filteringEnabled {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Filtering Statistics:")
+                                .font(.headline)
+                            
+                            Spacer()
+                            
+                            Button(action: {
+                                monitor.resetFilteringStats()
+                            }) {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.caption)
+                            }
+                            .help("Reset statistics")
+                        }
+                        
+                        let stats = monitor.filteringStats
+                        if stats.totalEvents > 0 {
+                            VStack(alignment: .leading, spacing: 4) {
+                                // Overall statistics
+                                HStack {
+                                    Text("Total Events: \(stats.totalEvents)")
+                                    Spacer()
+                                    Text("Filtered: \(stats.filteredEvents)")
+                                    Spacer()
+                                    Text("Noise Reduction: \(Int(stats.noiseReductionPercentage))%")
+                                        .foregroundColor(.green)
+                                }
+                                .font(.caption)
+                                
+                                // Most common event types
+                                if !stats.mostCommonEventTypes.isEmpty {
+                                    Text("Most Common Event Types:")
+                                        .font(.caption)
+                                        .fontWeight(.semibold)
+                                    
+                                    ForEach(Array(stats.mostCommonEventTypes.sorted { $0.value > $1.value }.prefix(5)), id: \.key) { eventType, count in
+                                        HStack {
+                                            Text("• \(eventType)")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                            Spacer()
+                                            Text("\(count)")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                }
+                                
+                                // Most common element types
+                                if !stats.mostCommonElementTypes.isEmpty {
+                                    Text("Most Common Element Types:")
+                                        .font(.caption)
+                                        .fontWeight(.semibold)
+                                    
+                                    ForEach(Array(stats.mostCommonElementTypes.sorted { $0.value > $1.value }.prefix(5)), id: \.key) { elementType, count in
+                                        HStack {
+                                            Text("• \(elementType)")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                            Spacer()
+                                            Text("\(count)")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                }
+                                
+                                // Filtering reasons
+                                if !stats.filteringReasons.isEmpty {
+                                    Text("Filtering Reasons:")
+                                        .font(.caption)
+                                        .fontWeight(.semibold)
+                                    
+                                    ForEach(Array(stats.filteringReasons.sorted { $0.value > $1.value }.prefix(5)), id: \.key) { reason, count in
+                                        HStack {
+                                            Text("• \(reason)")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                            Spacer()
+                                            Text("\(count)")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                }
+                            }
+                            .padding()
+                            .background(Color(NSColor.textBackgroundColor))
+                            .cornerRadius(8)
+                        } else {
+                            Text("No events recorded yet")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding()
+                                .background(Color(NSColor.textBackgroundColor))
+                                .cornerRadius(8)
+                        }
                     }
                 }
                 
