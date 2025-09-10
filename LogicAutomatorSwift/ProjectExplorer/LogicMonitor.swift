@@ -375,7 +375,7 @@ class LogicMonitor: ObservableObject {
         
         log(message)
         
-        let selectedElements = AXElementDebugger.getSelectedChild(element, maxDepth: 5)
+        let selectedElements = AXElementDebugger.getSelectedChild(element, maxDepth: 6)
         for elementInfo in selectedElements {
             log(elementInfo)
         }
