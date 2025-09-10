@@ -88,7 +88,8 @@ struct FilterConfigurationModal: View {
         ("Layout Elements", [
             "AXToolbar",
             "AXTabGroup",
-            "AXGroup"
+            "AXGroup",
+            "AXLayoutItem"
         ])
     ]
     
@@ -119,11 +120,13 @@ struct FilterConfigurationModal: View {
         "AXMenu",
         "AXCheckBox",
         "AXRadioButton",
-        "AXGroup"
+        "AXGroup",
+        "AXLayoutItem"
     ]
     
     @State private var selectedEventTypes: Set<String>
     @State private var selectedElementTypes: Set<String>
+    @State private var enableElementTypeFiltering: Bool = false  // Default disabled to avoid false positives
     @State private var debounceTime: Double = 0.5
     @State private var maxEventsPerSecond: Double = 10
     @State private var strictMode: Bool = false
@@ -131,6 +134,7 @@ struct FilterConfigurationModal: View {
     // UserDefaults keys for persistence
     private let eventTypesKey = "FilterEventTypes"
     private let elementTypesKey = "FilterElementTypes"
+    private let enableElementTypeFilteringKey = "FilterEnableElementTypeFiltering"
     private let debounceTimeKey = "FilterDebounceTime"
     private let maxEventsKey = "FilterMaxEvents"
     private let strictModeKey = "FilterStrictMode"
@@ -145,6 +149,7 @@ struct FilterConfigurationModal: View {
         
         self._selectedEventTypes = State(initialValue: savedEventTypes.isEmpty ? defaultMeaningfulEvents : Set(savedEventTypes))
         self._selectedElementTypes = State(initialValue: savedElementTypes.isEmpty ? defaultMeaningfulElements : Set(savedElementTypes))
+        self._enableElementTypeFiltering = State(initialValue: UserDefaults.standard.object(forKey: "FilterEnableElementTypeFiltering") == nil ? false : UserDefaults.standard.bool(forKey: "FilterEnableElementTypeFiltering"))
         self._debounceTime = State(initialValue: UserDefaults.standard.double(forKey: "FilterDebounceTime") == 0 ? 0.5 : UserDefaults.standard.double(forKey: "FilterDebounceTime"))
         self._maxEventsPerSecond = State(initialValue: UserDefaults.standard.double(forKey: "FilterMaxEvents") == 0 ? 10 : UserDefaults.standard.double(forKey: "FilterMaxEvents"))
         self._strictMode = State(initialValue: UserDefaults.standard.bool(forKey: "FilterStrictMode"))
@@ -236,42 +241,61 @@ struct FilterConfigurationModal: View {
                     
                     // UI Element Types Section
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("UI Element Types to Monitor")
-                            .font(.headline)
-                            .padding(.horizontal, 20)
+                        HStack {
+                            Text("UI Element Types to Monitor")
+                                .font(.headline)
+                            
+                            Spacer()
+                            
+                            Toggle("Enable Element Type Filtering", isOn: $enableElementTypeFiltering)
+                                .font(.caption)
+                                .toggleStyle(SwitchToggleStyle())
+                        }
+                        .padding(.horizontal, 20)
                         
-                        ForEach(elementCategories, id: \.0) { category, elements in
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text(category)
-                                    .font(.subheadline)
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.primary)
-                                    .padding(.horizontal, 20)
-                                
-                                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 12) {
-                                    ForEach(elements, id: \.self) { elementType in
-                                        HStack {
-                                            Button(action: {
-                                                toggleElementType(elementType)
-                                            }) {
-                                                HStack(spacing: 8) {
-                                                    Image(systemName: selectedElementTypes.contains(elementType) ? "checkmark.square.fill" : "square")
-                                                        .foregroundColor(selectedElementTypes.contains(elementType) ? .blue : .gray)
-                                                    
-                                                    Text(elementType)
-                                                        .font(.caption)
-                                                        .foregroundColor(.primary)
+                        if enableElementTypeFiltering {
+                            ForEach(elementCategories, id: \.0) { category, elements in
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text(category)
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.primary)
+                                        .padding(.horizontal, 20)
+                                    
+                                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 12) {
+                                        ForEach(elements, id: \.self) { elementType in
+                                            HStack {
+                                                Button(action: {
+                                                    toggleElementType(elementType)
+                                                }) {
+                                                    HStack(spacing: 8) {
+                                                        Image(systemName: selectedElementTypes.contains(elementType) ? "checkmark.square.fill" : "square")
+                                                            .foregroundColor(selectedElementTypes.contains(elementType) ? .blue : .gray)
+                                                        
+                                                        Text(elementType)
+                                                            .font(.caption)
+                                                            .foregroundColor(.primary)
+                                                    }
                                                 }
+                                                .buttonStyle(.plain)
+                                                
+                                                Spacer()
                                             }
-                                            .buttonStyle(.plain)
-                                            
-                                            Spacer()
+                                            .padding(.vertical, 2)
                                         }
-                                        .padding(.vertical, 2)
                                     }
+                                    .padding(.horizontal, 20)
                                 }
-                                .padding(.horizontal, 20)
                             }
+                        } else {
+                            Text("Element type filtering is disabled to avoid false positives. All element types will be monitored.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 8)
+                                .background(Color(NSColor.controlBackgroundColor))
+                                .cornerRadius(6)
+                                .padding(.horizontal, 20)
                         }
                     }
                     
@@ -360,6 +384,7 @@ struct FilterConfigurationModal: View {
     private func resetToDefaults() {
         selectedEventTypes = defaultMeaningfulEvents
         selectedElementTypes = defaultMeaningfulElements
+        enableElementTypeFiltering = false
         debounceTime = 0.5
         maxEventsPerSecond = 10
         strictMode = false
@@ -376,6 +401,7 @@ struct FilterConfigurationModal: View {
         // Save settings to UserDefaults
         UserDefaults.standard.set(Array(selectedEventTypes), forKey: eventTypesKey)
         UserDefaults.standard.set(Array(selectedElementTypes), forKey: elementTypesKey)
+        UserDefaults.standard.set(enableElementTypeFiltering, forKey: enableElementTypeFilteringKey)
         UserDefaults.standard.set(debounceTime, forKey: debounceTimeKey)
         UserDefaults.standard.set(maxEventsPerSecond, forKey: maxEventsKey)
         UserDefaults.standard.set(strictMode, forKey: strictModeKey)
@@ -384,6 +410,7 @@ struct FilterConfigurationModal: View {
         var config = FilteringConfiguration()
         config.meaningfulEventTypes = selectedEventTypes
         config.meaningfulRoles = selectedElementTypes
+        config.enableElementTypeFiltering = enableElementTypeFiltering
         config.debounceTime = debounceTime
         config.maxEventsPerSecond = Int(maxEventsPerSecond)
         config.strictMode = strictMode

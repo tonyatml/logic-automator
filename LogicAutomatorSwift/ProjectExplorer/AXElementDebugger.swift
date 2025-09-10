@@ -160,6 +160,76 @@ class AXElementDebugger {
         }
     }
     
+    /// Debug selected children elements
+    static func debugSelectedChildren(_ element: AXUIElement) {
+        var selectedChildren: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(element, kAXSelectedChildrenAttribute as CFString, &selectedChildren)
+        
+        if result == .success, let childrenArray = selectedChildren as? [AXUIElement] {
+            print("🔍 === Selected Children Debug ===")
+            print("📊 Found \(childrenArray.count) selected children")
+            
+            for (index, child) in childrenArray.enumerated() {
+                print("🔍 === Selected Child \(index + 1) ===")
+                printAllElementAttributes(child, title: "Selected Child \(index + 1)")
+            }
+            
+            print("🔍 === End Selected Children Debug ===")
+        } else {
+            print("❌ No selected children found or failed to get selected children (error: \(result.rawValue))")
+        }
+    }
+    
+    /// Get selected child information as string (recursive)
+    static func getSelectedChild(_ element: AXUIElement, maxDepth: Int = 5, currentDepth: Int = 0) -> [String] {
+        var selectedElements: [String] = []
+        
+        // Add indentation based on depth
+        // let indent = String(repeating: "  ", count: currentDepth)
+        
+        // Get basic element information
+        var role: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
+        let roleString = role as? String ?? "Unknown"
+        
+        var roleDescription: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXRoleDescriptionAttribute as CFString, &roleDescription)
+        let roleDescriptionString = roleDescription as? String ?? "Unknown"
+        
+        var title: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &title)
+        let titleString = title as? String ?? "No Title"
+        
+        var description: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &description)
+        let descriptionString = description as? String ?? "No Description"
+        
+        var isSelected: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXSelectedAttribute as CFString, &isSelected)
+        let selectedString = isSelected as? Bool ?? false ? "Yes" : "No"
+        
+        // If this element is selected, add it to the results
+        if selectedString == "Yes" {
+            let elementInfo = "depth: \(currentDepth)📋 Role: \(roleString) | RoleDesc: \(roleDescriptionString) | Title: \(titleString) | Desc: \(descriptionString) | Selected: \(selectedString)"
+            selectedElements.append(elementInfo)
+        }
+        
+        // Recursively check children if we haven't reached max depth
+        if currentDepth < maxDepth {
+            var children: CFTypeRef?
+            let result = AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &children)
+            
+            if result == .success, let childrenArray = children as? [AXUIElement] {
+                for child in childrenArray {
+                    let childSelectedElements = getSelectedChild(child, maxDepth: maxDepth, currentDepth: currentDepth + 1)
+                    selectedElements.append(contentsOf: childSelectedElements)
+                }
+            }
+        }
+        
+        return selectedElements
+    }
+    
     /// Print attributes of parent element if it exists
     static func debugParentElement(_ element: AXUIElement) {
         var parentElement: CFTypeRef?
@@ -189,28 +259,50 @@ class AXElementDebugger {
         // Add indentation based on depth
         let indent = String(repeating: "  ", count: currentDepth)
         
-        print("\(indent)🔍 === \(title) (Depth: \(currentDepth)) ===")
+        // print("\(indent)🔍 === \(title) (Depth: \(currentDepth)) ===")
         
-        // Print current element's basic info
+        // Get role information for display
         var role: CFTypeRef?
-        var roleDescription: CFTypeRef?
-        var title: CFTypeRef?
         AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
-        AXUIElementCopyAttributeValue(element, kAXRoleDescriptionAttribute as CFString, &roleDescription)
-        AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &title)
-        
         let roleString = role as? String ?? "Unknown"
-        let roleDescString = roleDescription as? String ?? "Unknown"
-        let titleString = title as? String ?? "Unknown"
         
-        print("\(indent)📋 Role: \(roleString) | RoleDesc: \(roleDescString) | Title: \(titleString)")
+        // Get role description
+        var roleDescription: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXRoleDescriptionAttribute as CFString, &roleDescription)
+        let roleDescriptionString = roleDescription as? String ?? "Unknown"
         
+        // Get additional element information for better debugging
+        var title: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &title)
+        let titleString = title as? String ?? "No Title"
+        
+        var description: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &description)
+        let descriptionString = description as? String ?? "No Description"
+        
+        var isSelected: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXSelectedAttribute as CFString, &isSelected)
+        let selectedString = isSelected as? Bool ?? false ? "Yes" : "No"
+        
+        //if roleDescriptionString == "Track Background" {
+            print("\(indent)📋 Role: \(roleString) | RoleDesc: \(roleDescriptionString) | Title: \(titleString) | Desc: \(descriptionString) | Selected: \(selectedString)")
+        //}
+        
+        // printAllElementAttributes(element)
         // Get children
         var children: CFTypeRef?
         let result = AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &children)
         
+        if descriptionString.starts(with: "Track 68") {
+            //printAllElementAttributes(element)
+        }
+        
+        if descriptionString.starts(with: "Track 69") {
+            //printAllElementAttributes(element)
+        }
+        
         if result == .success, let childrenArray = children as? [AXUIElement] {
-            print("\(indent)👶 Children count: \(childrenArray.count)")
+            //print("\(indent)👶 Children count: \(childrenArray.count)")
             
             // Recursively process children if we haven't reached max depth
             if currentDepth < maxDepth {
@@ -219,13 +311,13 @@ class AXElementDebugger {
                     debugAllChildrenRecursively(child, title: childTitle, maxDepth: maxDepth, currentDepth: currentDepth + 1)
                 }
             } else {
-                print("\(indent)⏹️ Max depth reached, not processing children further")
+                //print("\(indent)⏹️ Max depth reached, not processing children further")
             }
         } else {
-            print("\(indent)❌ No children found or failed to get children")
+            //print("\(indent)❌ No children found or failed to get children")
         }
         
-        print("\(indent)🔍 === End \(title) (Depth: \(currentDepth)) ===")
+        //print("\(indent)🔍 === End \(title) (Depth: \(currentDepth)) ===")
     }
     
     /// Print all children elements with their attributes (non-recursive)

@@ -299,16 +299,18 @@ class LogicMonitor: ObservableObject {
         var elementAttributes = getElementAttributes(element)
         elementAttributes["command"] = notificationName
         
-        // Since we're now only listening to selected event types, we only need to filter by UI element type
+        // Apply filtering if enabled
         if filteringEnabled {
             let config = getCurrentFilterConfiguration()
             
-            // Check if the element type is in our meaningful roles
-            if let role = elementAttributes["AXRole"] as? String {
-                if !config.meaningfulRoles.contains(role) {
-                    // Log filtered event for debugging
-                    log("🚫 Filtered element: \(notificationName) | Role: \(role) | Reason: element_type_filtered")
-                    return
+            // Check if the element type is in our meaningful roles (only if element type filtering is enabled)
+            if config.enableElementTypeFiltering {
+                if let role = elementAttributes["AXRole"] as? String {
+                    if !config.meaningfulRoles.contains(role) {
+                        // Log filtered event for debugging
+                        log("🚫 Filtered element: \(notificationName) | Role: \(role) | Reason: element_type_filtered")
+                        return
+                    }
                 }
             }
             
@@ -343,8 +345,26 @@ class LogicMonitor: ObservableObject {
         AXUIElementCopyAttributeValue(element, kAXRoleDescriptionAttribute as CFString, &roleDescription)
         let roleDescriptionString = roleDescription as? String ?? "Unknown"
         
-        let message = "📢 Notification: \(notificationName) | Role: \(roleString) | RoleDesc: \(roleDescriptionString)"
+        // Get additional element information for better debugging
+        var title: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &title)
+        let titleString = title as? String ?? "No Title"
         
+        var description: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &description)
+        let descriptionString = description as? String ?? "No Description"
+        
+        var identifier: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXDescription as CFString, &identifier)
+        let identifierString = identifier as? String ?? "No Identifier"
+        
+        let message = "📢 Notification: \(notificationName) | Role: \(roleString) | RoleDesc: \(roleDescriptionString) | Title: \(titleString) | Description: \(descriptionString) | ID: \(identifierString)"
+        
+        // AXElementDebugger.debugParentElement(element)
+        //AXElementDebugger.debugAllChildrenRecursively(element, maxDepth: 5)
+        // AXElementDebugger.debugSelectedChildren(element)
+        
+
         DispatchQueue.main.async {
             self.lastNotification = message
             self.notificationCount += 1
@@ -354,6 +374,11 @@ class LogicMonitor: ObservableObject {
         }
         
         log(message)
+        
+        let selectedElements = AXElementDebugger.getSelectedChild(element, maxDepth: 5)
+        for elementInfo in selectedElements {
+            log(elementInfo)
+        }
     }
     
     /// Get all available attributes as a dictionary for analysis

@@ -11,7 +11,7 @@ import Foundation
 /// Configuration for event filtering behavior
 struct FilteringConfiguration {
     var enableEventTypeFiltering: Bool = true
-    var enableElementTypeFiltering: Bool = true
+    var enableElementTypeFiltering: Bool = false  // Disabled to avoid false positives
     var enableFrequencyFiltering: Bool = true
     var enableContentFiltering: Bool = true
     var enableContextFiltering: Bool = true
@@ -32,7 +32,6 @@ struct FilteringConfiguration {
     ]
     
     var noiseEventTypes: Set<String> = [
-        "AXSelectedTextChanged",  // Text selection changes
         "AXUIElementDestroyed",   // Element destruction
         "AXCreated",              // Element creation
         "AXRowCountChanged",      // Row count changes
@@ -53,15 +52,15 @@ struct FilteringConfiguration {
         "AXMenu",                 // Menus
         "AXCheckBox",             // Checkboxes
         "AXRadioButton",          // Radio buttons
-        "AXGroup"                 // Groups (including track headers and other interactive containers)
+        "AXGroup",                // Groups (including track headers and other interactive containers)
+        "AXLayoutItem"            // Layout items (including track elements)
     ]
     
     var noiseRoles: Set<String> = [
         "AXUnknown",              // Unknown elements
         "AXStaticText",           // Static text
         "AXScrollArea",           // Scroll areas
-        "AXSplitGroup",           // Split panes
-        "AXLayoutItem"            // Layout containers
+        "AXSplitGroup"            // Split panes
     ]
 }
 
