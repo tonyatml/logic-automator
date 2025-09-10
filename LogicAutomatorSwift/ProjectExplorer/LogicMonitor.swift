@@ -189,59 +189,105 @@ class LogicMonitor: ObservableObject {
     }
     
     private func addNotifications(to observer: AXObserver, for appElement: AXUIElement) {
-        // Available notification constants in macOS Accessibility API
-        let notifications = [
-            kAXWindowCreatedNotification,           // New window created
-            kAXWindowMovedNotification,             // Window moved
-            kAXWindowResizedNotification,           // Window resized
-            kAXWindowMiniaturizedNotification,      // Window minimized
-            kAXWindowDeminiaturizedNotification,    // Window restored from minimized
-            kAXTitleChangedNotification,            // Window/element title changed
-            kAXFocusedWindowChangedNotification,    // Focused window changed
-            kAXFocusedUIElementChangedNotification, // Focused UI element changed
-            kAXValueChangedNotification,            // Control value changed
-            kAXSelectedChildrenChangedNotification, // Selected children changed
-            kAXSelectedTextChangedNotification,     // Selected text changed
-            kAXRowCountChangedNotification,         // Table row count changed
-            kAXSelectedCellsChangedNotification,    // Selected table cells changed
-            kAXMenuOpenedNotification,              // Menu opened
-            kAXMenuClosedNotification,              // Menu closed
-            kAXMenuItemSelectedNotification,        // Menu item selected
-            kAXUIElementDestroyedNotification,      // UI element destroyed
-            kAXCreatedNotification,                 // New child element created
-            kAXApplicationActivatedNotification,    // Application activated
-            kAXApplicationDeactivatedNotification,  // Application deactivated
-            kAXApplicationHiddenNotification,       // Application hidden
-            kAXApplicationShownNotification,        // Application shown
-            kAXDrawerCreatedNotification,           // Drawer created
-            kAXSheetCreatedNotification,            // Sheet created
-            kAXHelpTagCreatedNotification,          // Help tag created
-            kAXElementBusyChangedNotification,      // Element busy state changed
-            kAXLayoutChangedNotification,           // Layout changed
-            kAXMainWindowChangedNotification,       // Main window changed
-            kAXMovedNotification,                   // Element moved
-            kAXResizedNotification,                 // Element resized
-            kAXRowExpandedNotification,             // Table row expanded
-            kAXRowCollapsedNotification,            // Table row collapsed
-            kAXSelectedRowsChangedNotification,     // Selected table rows changed
-            kAXSelectedColumnsChangedNotification,  // Selected table columns changed
-            kAXSelectedChildrenMovedNotification,   // Selected children moved
-            kAXUnitsChangedNotification,            // Units changed (for rulers, etc.)
-            kAXAnnouncementRequestedNotification    // Screen reader announcement requested
+        // Get the current filter configuration to determine which notifications to add
+        let config = getCurrentFilterConfiguration()
+        
+        // Map event types to notification constants
+        let notificationMapping: [String: CFString] = [
+            // Menu Operations
+            "AXMenuOpened": kAXMenuOpenedNotification as CFString,
+            "AXMenuClosed": kAXMenuClosedNotification as CFString,
+            "AXMenuItemSelected": kAXMenuItemSelectedNotification as CFString,
+            
+            // Value Changes
+            "AXValueChanged": kAXValueChangedNotification as CFString,
+            
+            // Focus & Selection
+            "AXFocusedUIElementChanged": kAXFocusedUIElementChangedNotification as CFString,
+            "AXFocusedWindowChanged": kAXFocusedWindowChangedNotification as CFString,
+            "AXSelectedChildrenChanged": kAXSelectedChildrenChangedNotification as CFString,
+            "AXSelectedTextChanged": kAXSelectedTextChangedNotification as CFString,
+            "AXSelectedChildrenMoved": kAXSelectedChildrenMovedNotification as CFString,
+            
+            // Window Operations
+            "AXWindowCreated": kAXWindowCreatedNotification as CFString,
+            "AXWindowMoved": kAXWindowMovedNotification as CFString,
+            "AXWindowResized": kAXWindowResizedNotification as CFString,
+            "AXWindowMiniaturized": kAXWindowMiniaturizedNotification as CFString,
+            "AXWindowDeminiaturized": kAXWindowDeminiaturizedNotification as CFString,
+            "AXMainWindowChanged": kAXMainWindowChangedNotification as CFString,
+            
+            // Title & Layout
+            "AXTitleChanged": kAXTitleChangedNotification as CFString,
+            "AXLayoutChanged": kAXLayoutChangedNotification as CFString,
+            "AXMoved": kAXMovedNotification as CFString,
+            "AXResized": kAXResizedNotification as CFString,
+            
+            // Table Operations
+            "AXRowCountChanged": kAXRowCountChangedNotification as CFString,
+            "AXRowExpanded": kAXRowExpandedNotification as CFString,
+            "AXRowCollapsed": kAXRowCollapsedNotification as CFString,
+            "AXSelectedCellsChanged": kAXSelectedCellsChangedNotification as CFString,
+            "AXSelectedRowsChanged": kAXSelectedRowsChangedNotification as CFString,
+            "AXSelectedColumnsChanged": kAXSelectedColumnsChangedNotification as CFString,
+            
+            // Element Lifecycle
+            "AXUIElementDestroyed": kAXUIElementDestroyedNotification as CFString,
+            "AXCreated": kAXCreatedNotification as CFString,
+            "AXElementBusyChanged": kAXElementBusyChangedNotification as CFString,
+            
+            // Application State
+            "AXApplicationActivated": kAXApplicationActivatedNotification as CFString,
+            "AXApplicationDeactivated": kAXApplicationDeactivatedNotification as CFString,
+            "AXApplicationHidden": kAXApplicationHiddenNotification as CFString,
+            "AXApplicationShown": kAXApplicationShownNotification as CFString,
+            
+            // UI Elements
+            "AXDrawerCreated": kAXDrawerCreatedNotification as CFString,
+            "AXSheetCreated": kAXSheetCreatedNotification as CFString,
+            "AXHelpTagCreated": kAXHelpTagCreatedNotification as CFString,
+            "AXUnitsChanged": kAXUnitsChangedNotification as CFString,
+            "AXAnnouncementRequested": kAXAnnouncementRequestedNotification as CFString
         ]
         
-        for notification in notifications {
-            let result = AXObserverAddNotification(
-                observer,
-                appElement,
-                notification as CFString,
-                Unmanaged.passUnretained(self).toOpaque()
-            )
+        // Only add notifications for selected event types
+        for eventType in config.meaningfulEventTypes {
+            if let notification = notificationMapping[eventType] {
+                let result = AXObserverAddNotification(
+                    observer,
+                    appElement,
+                    notification as CFString,
+                    Unmanaged.passUnretained(self).toOpaque()
+                )
+                
+                if result == .success {
+                    log("✅ Added filtered notification: \(eventType)")
+                } else {
+                    log("⚠️ Failed to add notification: \(eventType) - Error: \(result)")
+                }
+            }
+        }
+        
+        // If no meaningful events are selected, add a minimal set to prevent issues
+        if config.meaningfulEventTypes.isEmpty {
+            log("⚠️ No meaningful events selected, adding basic notifications")
+            let basicNotifications = [
+                kAXMenuOpenedNotification,
+                kAXValueChangedNotification,
+                kAXFocusedUIElementChangedNotification
+            ]
             
-            if result == .success {
-                log("✅ Added notification: \(notification)")
-            } else {
-                log("⚠️ Failed to add notification: \(notification) - Error: \(result)")
+            for notification in basicNotifications {
+                let result = AXObserverAddNotification(
+                    observer,
+                    appElement,
+                    notification as CFString,
+                    Unmanaged.passUnretained(self).toOpaque()
+                )
+                
+                if result == .success {
+                    log("✅ Added basic notification: \(notification)")
+                }
             }
         }
     }
@@ -253,8 +299,20 @@ class LogicMonitor: ObservableObject {
         var elementAttributes = getElementAttributes(element)
         elementAttributes["command"] = notificationName
         
-        // Apply event filtering if enabled
+        // Since we're now only listening to selected event types, we only need to filter by UI element type
         if filteringEnabled {
+            let config = getCurrentFilterConfiguration()
+            
+            // Check if the element type is in our meaningful roles
+            if let role = elementAttributes["AXRole"] as? String {
+                if !config.meaningfulRoles.contains(role) {
+                    // Log filtered event for debugging
+                    log("🚫 Filtered element: \(notificationName) | Role: \(role) | Reason: element_type_filtered")
+                    return
+                }
+            }
+            
+            // Apply additional filtering (debouncing, rate limiting, etc.)
             let (shouldRecord, reason) = eventFilter.shouldRecordEvent(elementAttributes)
             
             if !shouldRecord {
@@ -1149,6 +1207,34 @@ class LogicMonitor: ObservableObject {
         // Create new event filter with updated configuration
         eventFilter = EventFilter(configuration: config)
         log("🔧 Filter configuration updated with \(config.meaningfulEventTypes.count) event types and \(config.meaningfulRoles.count) element types")
+    }
+    
+    /// Get current filter configuration
+    private func getCurrentFilterConfiguration() -> FilteringConfiguration {
+        var config = FilteringConfiguration()
+        
+        // Load saved settings
+        if let savedEventTypes = UserDefaults.standard.stringArray(forKey: "FilterEventTypes"), !savedEventTypes.isEmpty {
+            config.meaningfulEventTypes = Set(savedEventTypes)
+        }
+        
+        if let savedElementTypes = UserDefaults.standard.stringArray(forKey: "FilterElementTypes"), !savedElementTypes.isEmpty {
+            config.meaningfulRoles = Set(savedElementTypes)
+        }
+        
+        let savedDebounceTime = UserDefaults.standard.double(forKey: "FilterDebounceTime")
+        if savedDebounceTime > 0 {
+            config.debounceTime = savedDebounceTime
+        }
+        
+        let savedMaxEvents = UserDefaults.standard.double(forKey: "FilterMaxEvents")
+        if savedMaxEvents > 0 {
+            config.maxEventsPerSecond = Int(savedMaxEvents)
+        }
+        
+        config.strictMode = UserDefaults.standard.bool(forKey: "FilterStrictMode")
+        
+        return config
     }
 }
 

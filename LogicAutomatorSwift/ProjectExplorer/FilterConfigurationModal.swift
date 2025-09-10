@@ -24,17 +24,50 @@ struct FilterConfigurationModal: View {
         ]),
         ("Focus & Selection", [
             "AXFocusedUIElementChanged",
-            "AXSelectedChildrenChanged"
+            "AXFocusedWindowChanged",
+            "AXSelectedChildrenChanged",
+            "AXSelectedTextChanged",
+            "AXSelectedChildrenMoved"
         ]),
-        ("Button Interactions", [
-            "AXButtonPressed"
+        ("Window Operations", [
+            "AXWindowCreated",
+            "AXWindowMoved",
+            "AXWindowResized",
+            "AXWindowMiniaturized",
+            "AXWindowDeminiaturized",
+            "AXMainWindowChanged"
         ]),
-        ("Slider Controls", [
-            "AXSliderValueChanged"
+        ("Title & Layout", [
+            "AXTitleChanged",
+            "AXLayoutChanged",
+            "AXMoved",
+            "AXResized"
         ]),
-        ("Checkbox/Radio", [
-            "AXCheckBoxToggled",
-            "AXRadioButtonToggled"
+        ("Table Operations", [
+            "AXRowCountChanged",
+            "AXRowExpanded",
+            "AXRowCollapsed",
+            "AXSelectedCellsChanged",
+            "AXSelectedRowsChanged",
+            "AXSelectedColumnsChanged"
+        ]),
+        ("Element Lifecycle", [
+            "AXUIElementDestroyed",
+            "AXCreated",
+            "AXElementBusyChanged"
+        ]),
+        ("Application State", [
+            "AXApplicationActivated",
+            "AXApplicationDeactivated",
+            "AXApplicationHidden",
+            "AXApplicationShown"
+        ]),
+        ("UI Elements", [
+            "AXDrawerCreated",
+            "AXSheetCreated",
+            "AXHelpTagCreated",
+            "AXUnitsChanged",
+            "AXAnnouncementRequested"
         ])
     ]
     
@@ -66,7 +99,14 @@ struct FilterConfigurationModal: View {
         "AXValueChanged",
         "AXFocusedUIElementChanged",
         "AXSelectedChildrenChanged",
-        "AXButtonPressed"
+        "AXWindowCreated",
+        "AXWindowMoved",
+        "AXWindowResized",
+        "AXTitleChanged",
+        "AXRowCountChanged",
+        "AXSelectedCellsChanged",
+        "AXApplicationActivated",
+        "AXApplicationDeactivated"
     ]
     
     // Default high-probability meaningful elements (selected by default)
