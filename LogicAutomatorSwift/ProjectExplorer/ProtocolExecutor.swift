@@ -190,6 +190,7 @@ class ProtocolExecutor: ObservableObject {
             try await ensureLogicProReady()
             
             // Execute each step
+            var previousStepResult: [String: Any]? = nil
             for (index, step) in protocolDef.steps.enumerated() {
                 let stepStartTime = Date()
                 var stepError: Error? = nil
@@ -203,7 +204,7 @@ class ProtocolExecutor: ObservableObject {
                 log("➡️ Executing step \(index + 1): \(step.intent) with parameters: \(step.parameters)")
                 
                 do {
-                    try await executeStep(step)
+                    previousStepResult = try await executeStep(step, previousStepResult: previousStepResult)
                     successfulSteps += 1
                     stepMessage = "Step \(index + 1) (\(step.intent)) successful"
                     log("✅ Step \(index + 1) successful")
@@ -263,15 +264,18 @@ class ProtocolExecutor: ObservableObject {
     }
     
     /// Execute a single step
-    func executeStep(_ step: ProtocolStep) async throws {
+    func executeStep(_ step: ProtocolStep, previousStepResult: [String: Any]? = nil) async throws -> [String: Any] {
         guard let handler = intentHandlers[step.intent] else {
             throw ProtocolError.unknownIntent(step.intent)
         }
         
-        try await handler.execute(parameters: step.parameters, context: ExecutionContext(
+        let context = ExecutionContext(
             regionOperator: regionOperator,
-            logCallback: logCallback
-        ))
+            logCallback: logCallback,
+            previousStepResult: previousStepResult
+        )
+        
+        return try await handler.execute(parameters: step.parameters, context: context)
     }
     
     // MARK: - Private Methods
@@ -367,6 +371,7 @@ class ProtocolExecutor: ObservableObject {
 struct ExecutionContext {
     let regionOperator: LogicRegionOperator
     let logCallback: ((String) -> Void)?
+    let previousStepResult: [String: Any]?
     
     func log(_ message: String) {
         let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)
@@ -381,7 +386,7 @@ struct ExecutionContext {
 
 /// Protocol for intent handlers
 protocol IntentHandler {
-    func execute(parameters: [String: Any], context: ExecutionContext) async throws
+    func execute(parameters: [String: Any], context: ExecutionContext) async throws -> [String: Any]
 }
 
 // MARK: - Protocol Errors
