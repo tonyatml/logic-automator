@@ -206,7 +206,7 @@ struct ProtocolExecutionView: View {
                     
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 2) {
-                            ForEach(protocolExecutor.executionLog.reversed(), id: \.self) { message in
+                            ForEach(protocolExecutor.executionLog, id: \.self) { message in
                                 Text(message)
                                     .font(.system(.caption, design: .monospaced))
                                     .foregroundColor(.secondary)
@@ -287,7 +287,9 @@ struct ProtocolExecutionView: View {
     
     private func setupLogging() {
         protocolExecutor.logCallback = { message in
-            // Logging is handled by the ProtocolExecutor itself
+            DispatchQueue.main.async {
+                protocolExecutor.executionLog.append(message)
+            }
         }
     }
     

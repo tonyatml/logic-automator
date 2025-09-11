@@ -1,0 +1,19 @@
+{
+  "protocol": "test_select_track",
+  "description": "Test selecting track 1 in Logic Pro",
+  "tags": ["test", "track", "selection"],
+  "steps": [
+    {
+      "intent": "log",
+      "parameters": { "message": "Starting track selection test..." }
+    },
+    {
+      "intent": "select_track",
+      "parameters": { "track_number": 1 }
+    },
+    {
+      "intent": "log",
+      "parameters": { "message": "Track selection test completed!" }
+    }
+  ]
+}
