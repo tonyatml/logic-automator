@@ -201,17 +201,24 @@ struct ProtocolExecutionView: View {
             // Execution Log Section
             if !protocolExecutor.executionLog.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Execution Log")
-                        .font(.headline)
+                    HStack {
+                        Text("Execution Log")
+                            .font(.headline)
+                        
+                        Spacer()
+                        
+                        Button("Copy All") {
+                            copyAllLogs()
+                        }
+                        .buttonStyle(.bordered)
+                    }
                     
                     ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 2) {
-                            ForEach(protocolExecutor.executionLog, id: \.self) { message in
-                                Text(message)
-                                    .font(.system(.caption, design: .monospaced))
-                                    .foregroundColor(.secondary)
-                            }
-                        }
+                        Text(protocolExecutor.executionLog.joined(separator: "\n"))
+                            .font(.system(.caption, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .textSelection(.enabled)
+                            .padding(8)
                     }
                     .frame(maxHeight: 200)
                     .background(Color.black.opacity(0.05))
@@ -362,6 +369,13 @@ struct ProtocolExecutionView: View {
                 print("Protocol execution failed: \(error)")
             }
         }
+    }
+    
+    private func copyAllLogs() {
+        let logText = protocolExecutor.executionLog.joined(separator: "\n")
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(logText, forType: .string)
     }
 }
 

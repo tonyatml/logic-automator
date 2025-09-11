@@ -16,12 +16,14 @@ import Cocoa
 class SelectTrackHandler: IntentHandler {
     func execute(parameters: [String: Any], context: ExecutionContext) async throws {
         context.log("🎯 Executing select_track intent")
+        context.log("🚀 SelectTrackHandler: Starting execution with new Accessibility API method")
         
-        guard let trackNumber = parameters["track_number"] as? Int else {
-            throw ProtocolError.invalidParameters("track_number is required")
-        }
-        
-        context.log("📊 Selecting track \(trackNumber)")
+        do {
+            guard let trackNumber = parameters["track_number"] as? Int else {
+                throw ProtocolError.invalidParameters("track_number is required")
+            }
+            
+            context.log("📊 Selecting track \(trackNumber)")
         
         // Find Logic Pro application
         let runningApps = NSWorkspace.shared.runningApplications
@@ -33,20 +35,89 @@ class SelectTrackHandler: IntentHandler {
         logicApp.activate()
         try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
         
-        // Navigate to track list and select the specified track
-        // First, go to the top of the track list
-        context.log("Going to top of track list...")
-        try await sendKeysWithModifiers("home", modifiers: ["cmd"])
-        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        // Get Logic Pro application element
+        let appElement = AXUIElementCreateApplication(logicApp.processIdentifier)
         
-        // Then move down to the target track index
-        context.log("Moving down to track index \(trackNumber)...")
-        for _ in 1..<trackNumber {
-            try await sendKeys("down")
-            try await Task.sleep(nanoseconds: 50_000_000) // 0.05 seconds
+        // Get main window
+        let mainWindow = try await AccessibilityUtil.getMainWindow(of: appElement, logCallback: context.log)
+        context.log("✅ Found Logic Pro main window")
+        
+        // Find all child elements with max depth 6
+        context.log("🔍 Searching for track elements with max depth 6...")
+        let allElements = try await AccessibilityUtil.findAllChildElements(in: mainWindow, maxDepth: 7)
+        context.log("📊 Found \(allElements.count) total elements")
+        
+        // Look for elements with description starting with "Track 1" - filter out other tracks
+        var trackElements: [AXUIElement] = []
+        for element in allElements {
+            if let description = try await AccessibilityUtil.getElementDescription(element) {
+                // Only select the specified track number, filter out other tracks
+                let targetTrackPrefix = "Track \(trackNumber) "
+                if description.hasPrefix(targetTrackPrefix) {
+                    
+                    // Print all attributes of this element
+                    let role = try await AccessibilityUtil.getElementRole(element) ?? "Unknown"
+                    let roleDesc = try await AccessibilityUtil.getElementRoleDescription(element) ?? "Unknown"
+                    let title = try await AccessibilityUtil.getElementTitle(element) ?? "No Title"
+                    let identifier = try await AccessibilityUtil.getElementIdentifier(element) ?? "No ID"
+                    let subrole = try await AccessibilityUtil.getElementSubrole(element) ?? "No Subrole"
+                    
+                    if roleDesc != "Track Background" {
+                        trackElements.append(element)
+                        context.log("🎵 Found track element: \(description)")
+                        context.log("   📋 Role: \(role)")
+                        context.log("   📋 Role Description: \(roleDesc)")
+                        context.log("   📋 Title: \(title)")
+                        context.log("   📋 Description: \(description)")
+                        context.log("   📋 Identifier: \(identifier)")
+                        context.log("   📋 Subrole: \(subrole)")
+                    }
+                }
+            }
         }
         
-        context.log("✅ Track \(trackNumber) selected successfully")
+        context.log("🎵 Found \(trackElements.count) track elements")
+        
+        // If we found track elements, try to select the specified one
+        if trackElements.count > 0 {
+            // Since we already filtered for the specific track number, just use the first element
+            let targetTrack = trackElements[0]
+            
+            context.log("🎯 Attempting to select track \(trackNumber) (found \(trackElements.count) elements)")
+            
+            // Try to click on the track element
+            try await AccessibilityUtil.clickAtElementPosition(targetTrack, elementName: "Track \(trackNumber)", logCallback: context.log)
+            
+            // Also try the AXPressAction as a fallback
+            let pressResult = AXUIElementPerformAction(targetTrack, kAXPressAction as CFString)
+            if pressResult == .success {
+                context.log("✅ Track \(trackNumber) selected successfully via AXPressAction")
+            } else {
+                context.log("⚠️ AXPressAction failed for Track \(trackNumber), result: \(pressResult.rawValue)")
+            }
+            
+            context.log("✅ Track \(trackNumber) selection attempt completed")
+        } else {
+            context.log("⚠️ No track elements found, falling back to keyboard navigation")
+            
+            // Fallback to keyboard navigation
+            context.log("Going to top of track list...")
+            try await sendKeysWithModifiers("home", modifiers: ["cmd"])
+            try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+            
+            // Then move down to the target track index
+            context.log("Moving down to track index \(trackNumber)...")
+            for _ in 1..<trackNumber {
+                try await sendKeys("down")
+                try await Task.sleep(nanoseconds: 50_000_000) // 0.05 seconds
+            }
+            
+            context.log("✅ Track \(trackNumber) selected via keyboard navigation")
+        }
+        } catch {
+            context.log("❌ SelectTrackHandler error: \(error.localizedDescription)")
+            throw error
+        }
     }
     
     /// Send keyboard input using CGEvent

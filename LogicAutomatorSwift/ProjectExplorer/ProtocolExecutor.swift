@@ -369,7 +369,11 @@ struct ExecutionContext {
     let logCallback: ((String) -> Void)?
     
     func log(_ message: String) {
-        logCallback?(message)
+        let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)
+        let logMessage = "[\(timestamp)] \(message)"
+        
+        print(logMessage)
+        logCallback?(logMessage)
     }
 }
 
