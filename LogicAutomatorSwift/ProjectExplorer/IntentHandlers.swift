@@ -827,8 +827,86 @@ class QuantizeRegionHandler: IntentHandler {
         
         context.log("📊 Quantizing region with grid \(grid) and strength \(strength)%")
         
-        // For now, just log the action - would need LogicAutomator integration
-        context.log("Quantizing region - implementation needed")
+        // Get Logic Pro application
+        let logicProApp = try await getLogicProApplication(context: context)
+        
+        // Get main window
+        let mainWindow = try await AccessibilityUtil.getMainWindow(of: logicProApp, logCallback: context.log)
+        
+        // Find all child elements to locate the selected region
+        let allElements = try await AccessibilityUtil.findAllChildElements(in: mainWindow, maxDepth: 8)
+        
+        // Look for region elements (selected or not)
+        var regionElement: AXUIElement?
+        var foundRegions: [AXUIElement] = []
+        
+        for element in allElements {
+            do {
+                let role = try await AccessibilityUtil.getElementRole(element)
+                let roleDescription = try await AccessibilityUtil.getElementRoleDescription(element)
+                let description = try await AccessibilityUtil.getElementDescription(element)
+                //print(roleDescription, description,role)
+                // Look for region elements
+                if (role == "AXLayoutItem" || role == "AXGroup") &&
+                   (roleDescription?.contains("Region") == true || description?.contains("Region") == true) {
+                    
+                    foundRegions.append(element)
+                    
+                    
+                    // Check if this element is selected
+                    var selected: CFTypeRef?
+                    let selectedResult = AXUIElementCopyAttributeValue(element, kAXSelectedAttribute as CFString, &selected)
+                    
+                    if selectedResult == .success, let isSelected = selected as? Bool, isSelected {
+                        context.log("🎯 Found selected region element: \(description ?? "No description")")
+                        regionElement = element
+                        break
+                    }
+                }
+            } catch {
+                // Continue searching if we can't get element info
+                continue
+            }
+        }
+        
+        // If no selected region found, try to select the most recently created one
+        if regionElement == nil && !foundRegions.isEmpty {
+            context.log("⚠️ No selected region found, but found \(foundRegions.count) region(s)")
+            context.log("🎯 Attempting to select the first available region")
+            
+            // Try to click on the first region to select it
+            let firstRegion = foundRegions[0]
+            try await AccessibilityUtil.clickAtElementPosition(firstRegion, elementName: "Region", logCallback: context.log)
+            
+            // Wait a moment for selection to take effect
+            try await Task.sleep(nanoseconds: 300_000_000) // 300ms
+            
+            regionElement = firstRegion
+        }
+        
+        guard let region = regionElement else {
+            context.log("⚠️ No region elements found at all")
+            throw ProtocolError.executionFailed("No region elements found for quantization")
+        }
+        
+        // Show context menu on the region
+        context.log("📋 Showing context menu on selected region")
+        let showMenuResult = AXUIElementPerformAction(region, kAXShowMenuAction as CFString)
+        
+        //if showMenuResult == .success {
+            context.log("✅ Context menu shown successfully")
+            
+            // Wait for menu to appear
+            try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+            
+            // Send "Quantize" command
+            context.log("🎵 Sending 'Quantize' command...")
+            try await sendQuantizeCommand(grid: grid, context: context)
+            
+        //} else {
+          //  context.log("⚠️ Failed to show context menu, result: \(showMenuResult)")
+            //throw ProtocolError.executionFailed("Failed to show context menu for quantization")
+        //}
         
         context.log("✅ Region quantized successfully")
         
@@ -838,6 +916,174 @@ class QuantizeRegionHandler: IntentHandler {
             "strength": strength,
             "timestamp": Date().timeIntervalSince1970
         ]
+    }
+    
+    /// Send quantize command through context menu
+    private func sendQuantizeCommand(grid: String, context: ExecutionContext) async throws {
+        // Type "Quantize" to find the menu item
+        context.log("⌨️ Typing 'Quantize' to find menu item")
+        let quantizeString = "Q"
+        
+        for char in quantizeString {
+            //try await sendKeyPress(String(char), context: context)
+            //try await Task.sleep(nanoseconds: 50_000_000) // 50ms between keystrokes
+        }
+        
+        // Send the appropriate number of down arrows
+        for i in 1...9 {
+            try await sendKeyPress("down", context: context)
+            try await Task.sleep(nanoseconds: 100_000_000) // 100ms between arrows
+        }
+        
+        // Wait a moment for the menu to filter
+        try await Task.sleep(nanoseconds: 200_000_000) // 200ms
+        
+        // Press right arrow to select Quantize
+        context.log("➡️ Pressing right arrow to select Quantize")
+        try await sendKeyPress("right", context: context)
+        
+        // Wait for Quantize submenu to open
+        try await Task.sleep(nanoseconds: 300_000_000) // 300ms
+        
+        // Now select the grid value by sending down arrows
+        let downCount = getDownArrowCount(for: grid)
+        context.log("🎯 Selecting grid value \(grid) with \(downCount) down arrow(s)")
+        
+        // Send the appropriate number of down arrows
+        for i in 1...downCount {
+            context.log("⬇️ Sending down arrow \(i)/\(downCount)")
+            try await sendKeyPress("down", context: context)
+            try await Task.sleep(nanoseconds: 100_000_000) // 100ms between arrows
+        }
+        
+        // Wait a moment
+        try await Task.sleep(nanoseconds: 200_000_000) // 200ms
+        
+        // Press Enter to confirm
+        context.log("⏎ Pressing Enter to confirm grid selection")
+        try await sendKeyPress("return", context: context)
+        
+        context.log("✅ Quantize command sent successfully")
+    }
+    
+    /// Get the number of down arrows needed for the grid value
+    private func getDownArrowCount(for grid: String) -> Int {
+        switch grid {
+        case "1/1": return 1  // 1 down arrow
+        case "1/2": return 2  // 2 down arrows
+        case "1/4": return 3  // 3 down arrows
+        case "1/8": return 4  // 4 down arrows
+        case "1/16": return 5 // 5 down arrows
+        case "1/32": return 6 // 6 down arrows
+        case "1/64": return 7 // 7 down arrows
+        default: return 5     // Default to 1/16 (5 down arrows)
+        }
+    }
+    
+    /// Convert grid parameter to menu value
+    private func convertGridToMenuValue(_ grid: String) -> String {
+        switch grid {
+        case "1/1": return "1/1 Note"
+        case "1/2": return "1/2 Note"
+        case "1/4": return "1/4 Note"
+        case "1/8": return "1/8 Note"
+        case "1/16": return "1/16 Note"
+        case "1/32": return "1/32 Note"
+        case "1/64": return "1/64 Note"
+        default: return "1/16 Note" // Default fallback
+        }
+    }
+    
+    /// Get Logic Pro application dynamically
+    private func getLogicProApplication(context: ExecutionContext) async throws -> AXUIElement {
+        let logicBundleID = "com.apple.logic10"
+        let runningApps = NSWorkspace.shared.runningApplications
+        
+        if let logicApp = runningApps.first(where: { $0.bundleIdentifier == logicBundleID }) {
+            let pid = logicApp.processIdentifier
+            context.log("Found Logic Pro with PID: \(pid)")
+            return AXUIElementCreateApplication(pid)
+        } else {
+            throw ProtocolError.executionFailed("Logic Pro not found in running applications")
+        }
+    }
+    
+    /// Send a key press event
+    private func sendKeyPress(_ key: String, context: ExecutionContext) async throws {
+        let keyCode = getKeyCode(for: key)
+        
+        // Create key down event
+        let keyDownEvent = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true)
+        keyDownEvent?.post(tap: .cghidEventTap)
+        
+        // Create key up event
+        let keyUpEvent = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: false)
+        keyUpEvent?.post(tap: .cghidEventTap)
+    }
+    
+    /// Get key code for a character
+    private func getKeyCode(for key: String) -> CGKeyCode {
+        switch key.lowercased() {
+        case "a": return 0x00
+        case "s": return 0x01
+        case "d": return 0x02
+        case "f": return 0x03
+        case "h": return 0x04
+        case "g": return 0x05
+        case "z": return 0x06
+        case "x": return 0x07
+        case "c": return 0x08
+        case "v": return 0x09
+        case "b": return 0x0B
+        case "q": return 0x0C
+        case "w": return 0x0D
+        case "e": return 0x0E
+        case "r": return 0x0F
+        case "y": return 0x10
+        case "t": return 0x11
+        case "1": return 0x12
+        case "2": return 0x13
+        case "3": return 0x14
+        case "4": return 0x15
+        case "6": return 0x16
+        case "5": return 0x17
+        case "=": return 0x18
+        case "9": return 0x19
+        case "7": return 0x1A
+        case "-": return 0x1B
+        case "8": return 0x1C
+        case "0": return 0x1D
+        case "]": return 0x1E
+        case "o": return 0x1F
+        case "u": return 0x20
+        case "[": return 0x21
+        case "i": return 0x22
+        case "p": return 0x23
+        case "l": return 0x25
+        case "j": return 0x26
+        case "'": return 0x27
+        case "k": return 0x28
+        case ";": return 0x29
+        case "\\": return 0x2A
+        case ",": return 0x2B
+        case "/": return 0x2C
+        case "n": return 0x2D
+        case "m": return 0x2E
+        case ".": return 0x2F
+        case "tab": return 0x30
+        case "space": return 0x31
+        case "`": return 0x32
+        case "return": return 0x24
+        case "enter": return 0x24
+        case "escape": return 0x35
+        case "delete": return 0x33
+        case "forwarddelete": return 0x75
+        case "left": return 0x7B
+        case "right": return 0x7C
+        case "down": return 0x7D
+        case "up": return 0x7E
+        default: return 0x00
+        }
     }
 }
 
