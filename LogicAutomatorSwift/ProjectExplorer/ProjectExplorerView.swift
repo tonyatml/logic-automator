@@ -6,12 +6,15 @@ import UniformTypeIdentifiers
 struct ProjectExplorerView: View {
     @StateObject private var explorer = LogicProjectExplorer()
     @StateObject private var monitor = LogicMonitor()
+    // @StateObject private var logicAutomator = LogicAutomator() // Removed to avoid import issues
+    @StateObject private var regionOperator = LogicRegionOperator()
     @State private var showingSaveProtocolModal = false
     @State private var showingToast = false
     @State private var toastMessage = ""
     @State private var showingSaveDialog = false
     @State private var pendingProtocolData: SaveProtocolModal.ProtocolData?
     @State private var showingFilterConfig = false
+    @State private var selectedTab = 0
     
     var body: some View {
         VStack(spacing: 0) {
@@ -126,6 +129,111 @@ struct ProjectExplorerView: View {
             .padding()
             .background(Color(NSColor.controlBackgroundColor))
             
+            // Tab selection
+            Picker("Tab", selection: $selectedTab) {
+                Text("Learning").tag(0)
+                Text("Protocol Execution").tag(1)
+            }
+            .pickerStyle(SegmentedPickerStyle())
+            .padding(.horizontal)
+            
+            // Tab content
+            TabView(selection: $selectedTab) {
+                // Learning Tab
+                learningTabView
+                    .tag(0)
+                
+                // Protocol Execution Tab
+                ProtocolExecutionView(
+                    regionOperator: regionOperator
+                )
+                .tag(1)
+            }
+            .tabViewStyle(DefaultTabViewStyle())
+        }
+        .frame(minWidth: 800, minHeight: 600)
+        .sheet(isPresented: $showingSaveProtocolModal) {
+            SaveProtocolModal(isPresented: $showingSaveProtocolModal) { protocolData in
+                saveProtocol(protocolData)
+            }
+        }
+        .sheet(isPresented: $showingFilterConfig) {
+            FilterConfigurationModal(isPresented: $showingFilterConfig, monitor: monitor)
+        }
+        .fileExporter(
+            isPresented: $showingSaveDialog,
+            document: ProtocolDocument(protocolData: pendingProtocolData),
+            contentType: .json,
+            defaultFilename: pendingProtocolData?.name ?? "protocol"
+        ) { result in
+            switch result {
+            case .success(let url):
+                if let protocolData = pendingProtocolData {
+                    let success = saveProtocolToUserSelectedDirectory(protocolData, to: url)
+                    if success {
+                        toastMessage = "Protocol \"\(protocolData.name)\" saved successfully to \(url.lastPathComponent)"
+                        // Clear the recorded events count after saving, but keep the log output
+                        monitor.recordedEventsCount = 0
+                        // explorer.explorationResults = "" // Don't clear log output
+                    } else {
+                        toastMessage = "Failed to save protocol \"\(protocolData.name)\""
+                    }
+                    showingToast = true
+                    
+                    // Hide toast after 3 seconds
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        showingToast = false
+                    }
+                }
+                pendingProtocolData = nil
+            case .failure(let error):
+                toastMessage = "Failed to save protocol: \(error.localizedDescription)"
+                showingToast = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    showingToast = false
+                }
+                pendingProtocolData = nil
+            }
+        }
+        .overlay(
+            // Toast notification
+            Group {
+                if showingToast {
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                            Text(toastMessage)
+                                .foregroundColor(.primary)
+                        }
+                        .padding()
+                        .background(Color(NSColor.windowBackgroundColor))
+                        .cornerRadius(8)
+                        .shadow(radius: 10)
+                        .padding()
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .animation(.easeInOut(duration: 0.3), value: showingToast)
+                }
+            }
+        )
+        .onAppear {
+            // Set up monitor logging to output to the explorer's log
+            monitor.logCallback = { message in
+                Task { @MainActor in
+                    explorer.appendToLog(message)
+                }
+            }
+            
+            // SystemInfoUtil.printLightweightSystemInfo()
+        }
+    }
+    
+    // MARK: - Learning Tab View
+    
+    private var learningTabView: some View {
+        VStack(spacing: 0) {
             // Log display area
             VStack(alignment: .leading, spacing: 16) {
                 // Enhanced Status Bar

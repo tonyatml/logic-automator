@@ -1,0 +1,23 @@
+{
+  "protocol": "create_chord_region",
+  "description": "Creates a MIDI region and inserts chords",
+  "tags": ["midi", "harmony", "workflow"],
+  "steps": [
+    {
+      "intent": "select_track",
+      "parameters": { "track_number": 1 }
+    },
+    {
+      "intent": "create_region",
+      "parameters": { "type": "MIDI", "length_bars": 4 }
+    },
+    {
+      "intent": "import_chords",
+      "parameters": { "folder": "ChordProgressions", "random": true }
+    },
+    {
+      "intent": "quantize_region",
+      "parameters": { "grid": "1/16", "strength": 90 }
+    }
+  ]
+}

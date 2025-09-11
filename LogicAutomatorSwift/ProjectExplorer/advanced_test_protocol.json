@@ -1,0 +1,67 @@
+{
+  "protocol": "create_complete_song",
+  "description": "Creates a complete song with multiple tracks, regions, and effects",
+  "tags": ["song", "production", "workflow", "advanced"],
+  "steps": [
+    {
+      "intent": "set_tempo",
+      "parameters": { "tempo": 120 }
+    },
+    {
+      "intent": "set_key",
+      "parameters": { "key": "C Major" }
+    },
+    {
+      "intent": "create_track",
+      "parameters": { "type": "Software Instrument" }
+    },
+    {
+      "intent": "select_track",
+      "parameters": { "track_number": 1 }
+    },
+    {
+      "intent": "create_region",
+      "parameters": { "type": "MIDI", "length_bars": 8 }
+    },
+    {
+      "intent": "import_chords",
+      "parameters": { "folder": "ChordProgressions", "random": false }
+    },
+    {
+      "intent": "quantize_region",
+      "parameters": { "grid": "1/8", "strength": 85 }
+    },
+    {
+      "intent": "create_track",
+      "parameters": { "type": "Audio" }
+    },
+    {
+      "intent": "select_track",
+      "parameters": { "track_number": 2 }
+    },
+    {
+      "intent": "import_midi",
+      "parameters": { "filename": "drum_loop.mid", "track_number": 2 }
+    },
+    {
+      "intent": "apply_effect",
+      "parameters": { "effect": "Reverb", "track_number": 1, "preset": "Hall" }
+    },
+    {
+      "intent": "set_track_property",
+      "parameters": { "property": "volume", "value": -3, "track_number": 1 }
+    },
+    {
+      "intent": "wait",
+      "parameters": { "duration": 2, "unit": "seconds" }
+    },
+    {
+      "intent": "play",
+      "parameters": { "from_bar": 1 }
+    },
+    {
+      "intent": "log",
+      "parameters": { "message": "Song creation completed successfully", "level": "info" }
+    }
+  ]
+}

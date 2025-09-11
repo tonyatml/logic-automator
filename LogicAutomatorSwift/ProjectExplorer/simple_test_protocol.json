@@ -1,0 +1,19 @@
+{
+  "protocol": "simple_test",
+  "description": "A simple test protocol to verify the system works",
+  "tags": ["test", "simple"],
+  "steps": [
+    {
+      "intent": "log",
+      "parameters": { "message": "Starting simple test protocol", "level": "info" }
+    },
+    {
+      "intent": "wait",
+      "parameters": { "duration": 1, "unit": "seconds" }
+    },
+    {
+      "intent": "log",
+      "parameters": { "message": "Test completed successfully", "level": "info" }
+    }
+  ]
+}
