@@ -464,6 +464,11 @@ class CreateRegionHandler: IntentHandler {
                 }
                 
                 context.log("✅ \(regionType) region creation initiated successfully")
+                
+                // Set the region length if specified
+                if lengthBars > 0 {
+                    try await setRegionLength(lengthBars, context: context)
+                }
             } else {
                 context.log("⚠️ No Track Background elements found")
                 throw ProtocolError.invalidParameters("No Track Background elements found")
@@ -525,6 +530,189 @@ class CreateRegionHandler: IntentHandler {
         try await sendKeyPress("return", context: context)
         
         context.log("✅ 'Create MIDI Region' command sent successfully")
+    }
+    
+    /// Get Logic Pro application dynamically
+    private func getLogicProApplication(context: ExecutionContext) async throws -> AXUIElement {
+        let logicBundleID = "com.apple.logic10"
+        let runningApps = NSWorkspace.shared.runningApplications
+        
+        if let logicApp = runningApps.first(where: { $0.bundleIdentifier == logicBundleID }) {
+            let pid = logicApp.processIdentifier
+            context.log("Found Logic Pro with PID: \(pid)")
+            return AXUIElementCreateApplication(pid)
+        } else {
+            throw ProtocolError.executionFailed("Logic Pro not found in running applications")
+        }
+    }
+    
+    /// Set the length of the created region using menu bar
+    private func setRegionLength(_ lengthBars: Int, context: ExecutionContext) async throws {
+        context.log("📏 Setting region length to \(lengthBars) bars using menu bar")
+        
+        // Wait for the region to be created and selected
+        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        
+        // Use menu: Edit -> Length -> Change...
+        try await clickMenuItem("Edit", "Length", "Change…", context: context)
+        
+        // Wait for dialog to open
+        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        
+        // Set the length value in the dialog
+        context.log("📝 Setting length value to \(lengthBars)")
+        try await setLengthInDialog(lengthBars, context: context)
+    }
+    
+    /// Click menu item using Accessibility API (based on LogicAutomator implementation)
+    private func clickMenuItem(_ menuName: String, _ submenuName: String, _ itemName: String, context: ExecutionContext) async throws {
+        context.log("Clicking menu item: \(menuName) -> \(submenuName) -> \(itemName)")
+        
+        // Try multiple times with reconnection
+        for attempt in 1...3 {
+            context.log("Attempt \(attempt) to access menu bar...")
+            
+            // Get Logic Pro application dynamically
+            let logicProApp = try await getLogicProApplication(context: context)
+            
+            // Get menu bar
+            var menuBar: CFTypeRef?
+            let result = AXUIElementCopyAttributeValue(logicProApp, kAXMenuBarAttribute as CFString, &menuBar)
+            
+            if result == .success, let menuBar = menuBar {
+                context.log("Successfully got menu bar on attempt \(attempt)")
+                // Find and click the menu item
+                try await findAndClickMenuItem(menuBar as! AXUIElement, [menuName, submenuName, itemName], context: context)
+                context.log("Menu item clicked successfully")
+                return
+            } else {
+                context.log("Failed to get menu bar on attempt \(attempt), result: \(result)")
+                if attempt == 3 {
+                    throw ProtocolError.executionFailed("Could not access menu bar after 3 attempts")
+                }
+                try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+            }
+        }
+    }
+    
+    /// Recursively find and click menu item (based on LogicAutomator implementation)
+    private func findAndClickMenuItem(_ element: AXUIElement, _ menuPath: [String], context: ExecutionContext) async throws {
+        guard !menuPath.isEmpty else { return }
+        
+        let currentMenuName = menuPath[0]
+        let remainingPath = Array(menuPath.dropFirst())
+        
+        context.log("Looking for menu item: '\(currentMenuName)' in current element")
+        
+        // Get children
+        var children: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &children)
+        
+        guard result == .success, let children = children else {
+            throw ProtocolError.executionFailed("Could not get menu children")
+        }
+        
+        let childrenArray = children as! [AXUIElement]
+        context.log("Found \(childrenArray.count) children in current element")
+        
+        // Find the menu item with matching title
+        for (index, child) in childrenArray.enumerated() {
+            var title: CFTypeRef?
+            let titleResult = AXUIElementCopyAttributeValue(child, kAXTitleAttribute as CFString, &title)
+            
+            if titleResult == .success, let title = title as? String {
+                context.log("Child \(index): '\(title)'")
+                
+                if title == currentMenuName {
+                    context.log("Found matching menu item: '\(currentMenuName)'")
+                    
+                    // If this is the final item, click it
+                    if remainingPath.isEmpty {
+                        context.log("Clicking final menu item: '\(currentMenuName)'")
+                        let clickResult = AXUIElementPerformAction(child, kAXPressAction as CFString)
+                        if clickResult != .success {
+                            throw ProtocolError.executionFailed("Failed to click menu item: \(currentMenuName)")
+                        }
+                        context.log("Successfully clicked menu item: '\(currentMenuName)'")
+                        return
+                    } else {
+                        // For submenus, we need to "press" the menu item to expand it
+                        context.log("Pressing menu item to expand submenu: '\(currentMenuName)'")
+                        let pressResult = AXUIElementPerformAction(child, kAXPressAction as CFString)
+                        if pressResult != .success {
+                            throw ProtocolError.executionFailed("Failed to expand submenu: \(currentMenuName)")
+                        }
+                        
+                        // Wait a bit for the submenu to expand
+                        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                        
+                        // Check if the first child is an AXMenu (submenu)
+                        var submenuChildren: CFTypeRef?
+                        let submenuResult = AXUIElementCopyAttributeValue(child, kAXChildrenAttribute as CFString, &submenuChildren)
+                        
+                        if submenuResult == .success, let submenuChildren = submenuChildren {
+                            let submenuArray = submenuChildren as! [AXUIElement]
+                            if !submenuArray.isEmpty {
+                                // Check if first child has AXMenu role
+                                var role: CFTypeRef?
+                                let roleResult = AXUIElementCopyAttributeValue(submenuArray[0], kAXRoleAttribute as CFString, &role)
+                                
+                                if roleResult == .success, let role = role as? String, role == "AXMenu" {
+                                    context.log("Found AXMenu submenu, using it for next search")
+                                    // Use the AXMenu element for the next search
+                                    try await findAndClickMenuItem(submenuArray[0], remainingPath, context: context)
+                                    return
+                                }
+                            }
+                        }
+                        
+                        // Fallback: Recursively find the next item in the original element
+                        context.log("Recursively searching for remaining path: \(remainingPath)")
+                        try await findAndClickMenuItem(child, remainingPath, context: context)
+                        return
+                    }
+                }
+            } else {
+                context.log("Child \(index): Could not get title")
+            }
+        }
+        
+        // If we get here, we didn't find the menu item
+        context.log("Available menu items:")
+        for (index, child) in childrenArray.enumerated() {
+            var title: CFTypeRef?
+            let titleResult = AXUIElementCopyAttributeValue(child, kAXTitleAttribute as CFString, &title)
+            if titleResult == .success, let title = title as? String {
+                context.log("  \(index): '\(title)'")
+            } else {
+                context.log("  \(index): <no title>")
+            }
+        }
+        
+        throw ProtocolError.executionFailed("Could not find menu item: '\(currentMenuName)'")
+    }
+    
+    /// Set length value in the dialog
+    private func setLengthInDialog(_ lengthBars: Int, context: ExecutionContext) async throws {
+        // The dialog should be open now, we need to find the input field
+        // and set the value to the length in bars
+        
+        // For now, let's try a simple approach: type the value directly
+        // The dialog might have focus on the input field already
+        
+        let lengthString = String(lengthBars)
+        context.log("⌨️ Typing length value: \(lengthString)")
+        
+        for char in lengthString {
+            try await sendKeyPress(String(char), context: context)
+            try await Task.sleep(nanoseconds: 50_000_000) // 50ms between keystrokes
+        }
+        
+        // Press Enter or click OK to confirm
+        try await Task.sleep(nanoseconds: 200_000_000) // 200ms
+        try await sendKeyPress("return", context: context)
+        
+        context.log("✅ Length set to \(lengthBars) bars successfully")
     }
     
     /// Get key code for a character
