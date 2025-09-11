@@ -62,16 +62,15 @@ class SelectTrackHandler: IntentHandler {
                     let identifier = try await AccessibilityUtil.getElementIdentifier(element) ?? "No ID"
                     let subrole = try await AccessibilityUtil.getElementSubrole(element) ?? "No Subrole"
                     
-                    if roleDesc != "Track Background" {
-                        trackElements.append(element)
-                        context.log("🎵 Found track element: \(description)")
-                        context.log("   📋 Role: \(role)")
-                        context.log("   📋 Role Description: \(roleDesc)")
-                        context.log("   📋 Title: \(title)")
-                        context.log("   📋 Description: \(description)")
-                        context.log("   📋 Identifier: \(identifier)")
-                        context.log("   📋 Subrole: \(subrole)")
-                    }
+                    trackElements.append(element)
+                    context.log("🎵 Found track element: \(description)")
+                    context.log("   📋 Role: \(role)")
+                    context.log("   📋 Role Description: \(roleDesc)")
+                    context.log("   📋 Title: \(title)")
+                    context.log("   📋 Description: \(description)")
+                    context.log("   📋 Identifier: \(identifier)")
+                    context.log("   📋 Subrole: \(subrole)")
+                    
                 }
             }
         }
