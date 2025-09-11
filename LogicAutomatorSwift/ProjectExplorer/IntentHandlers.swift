@@ -505,17 +505,20 @@ class CreateRegionHandler: IntentHandler {
         // Send two down arrow keys to select "Create MIDI Region" (second item in menu)
         context.log("⬇️ Sending two down arrow keys to select 'Create MIDI Region'")
         
+        // Wait between key presses
+        try await Task.sleep(nanoseconds: 500_000_000) // 100ms
+        
         // First down arrow
         try await sendKeyPress("down", context: context)
         
         // Wait between key presses
-        try await Task.sleep(nanoseconds: 100_000_000) // 100ms
+        try await Task.sleep(nanoseconds: 500_000_000) // 100ms
         
         // Second down arrow
         try await sendKeyPress("down", context: context)
         
         // Wait a moment for the selection to be highlighted
-        try await Task.sleep(nanoseconds: 200_000_000) // 200ms
+        try await Task.sleep(nanoseconds: 500_000_000) // 200ms
         
         // Press Enter to confirm the selection
         context.log("⏎ Pressing Enter to confirm selection")
