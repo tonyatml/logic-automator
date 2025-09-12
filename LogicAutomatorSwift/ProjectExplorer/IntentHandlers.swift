@@ -1675,6 +1675,12 @@ class SetExportOptionHandler: IntentHandler {
             return
         }
         
+        // Special handling for Bit Depth option
+        if option.lowercased() == "normalize" {
+            try await findAndSetNormalizeOption(allElements: allElements, value: value, context: context)
+            return
+        }
+        
         // Look for elements that match the option name
         for (index, element) in allElements.enumerated() {
              let title = try await AccessibilityUtil.getElementTitle(element) ?? "unkown"
@@ -1775,6 +1781,84 @@ class SetExportOptionHandler: IntentHandler {
                     try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
                     
                     context.log("✅ File Type set to \(value)")
+                    return
+                }
+            }
+        }
+        
+        // Fallback: try keyboard navigation
+        throw ProtocolError.executionFailed("⚠️ File Type dropdown not found, trying keyboard navigation")
+    }
+    
+    /// Find and set File Type option from all elements
+    private func findAndSetNormalizeOption(allElements: [AXUIElement], value: Any, context: ExecutionContext) async throws {
+        context.log("🎵 Looking for Normalize option in \(allElements.count) elements")
+        
+        // Look for File Type dropdown - search for various patterns
+        for (_, element) in allElements.enumerated() {
+            if let role = try await AccessibilityUtil.getElementRole(element),
+               let roleValue = try await AccessibilityUtil.getElementValue(element) {
+                
+                if role == "AXPopUpButton" && (roleValue == "Overload Protection Only" || roleValue == "On" || roleValue == "Off") {
+                    context.log("🎯 Found Normalize dropdown: AXPopUpButton - \(role)")
+                    
+                    // Click to open the dropdown
+                    try await AccessibilityUtil.clickAtElementPosition(element, elementName: "File Type Dropdown", logCallback: context.log)
+                    try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                    
+                    if roleValue == "Overload Protection Only" {
+                        
+                        if value as? String == "On" {
+                            try await sendKeyPress("down", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                        }
+                        
+                        if value as? String == "Off"
+                        {
+                            try await sendKeyPress("up", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                        }
+                    }
+                    
+                    if roleValue == "On" {
+                        
+                        if value as? String == "Overload Protection Only" {
+                            try await sendKeyPress("up", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                        }
+                        
+                        if value as? String == "Off"
+                        {
+                            try await sendKeyPress("up", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                            try await sendKeyPress("up", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                        }
+                    }
+                    
+                    if roleValue == "Off" {
+                        
+                        if value as? String == "Overload Protection Only" {
+                            try await sendKeyPress("down", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                            
+                            
+                        }
+                        
+                        if value as? String == "On"
+                        {
+                            try await sendKeyPress("down", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                            try await sendKeyPress("down", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                        }
+                    }
+                    
+                    // Press Enter to confirm selection
+                    try await sendKeyPress("return", context: context)
+                    try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                    
+                    context.log("✅ Normalize set to \(value)")
                     return
                 }
             }
