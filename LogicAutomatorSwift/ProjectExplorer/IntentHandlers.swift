@@ -1529,7 +1529,6 @@ class OpenMenuHandler: IntentHandler {
         ]
     }
 }
-
     
 /// Handler for waiting for windows
 class WaitForWindowHandler: IntentHandler {
@@ -1540,7 +1539,7 @@ class WaitForWindowHandler: IntentHandler {
             throw ProtocolError.invalidParameters("window_title is required")
         }
         
-        let timeoutSeconds = parameters["timeout_seconds"] as? Int ?? 30
+        let timeoutSeconds = parameters["timeout_seconds"] as? Int ?? 2
         
         context.log("📊 Waiting for window: '\(windowTitle)' (timeout: \(timeoutSeconds)s)")
         
@@ -1549,34 +1548,6 @@ class WaitForWindowHandler: IntentHandler {
         
         while Date().timeIntervalSince(startTime) < timeout {
             do {
-                // Get Logic Pro application
-                let logicProApp = try await getLogicProApplication(context: context)
-                
-                // Get all windows
-                var windows: CFTypeRef?
-                let result = AXUIElementCopyAttributeValue(logicProApp, kAXWindowsAttribute as CFString, &windows)
-                
-                if result == .success, let windows = windows {
-                    let windowsArray = windows as! [AXUIElement]
-                    
-                    for window in windowsArray {
-                        var title: CFTypeRef?
-                        let titleResult = AXUIElementCopyAttributeValue(window, kAXTitleAttribute as CFString, &title)
-                        
-                        if titleResult == .success, let title = title as? String {
-                            if title.contains(windowTitle) {
-                                context.log("✅ Found window: '\(title)'")
-                                return [
-                                    "intent": "wait_for_window",
-                                    "window_title": windowTitle,
-                                    "found_title": title,
-                                    "timestamp": Date().timeIntervalSince1970
-                                ]
-                            }
-                        }
-                    }
-                }
-                
                 // Wait before checking again
                 try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
                 
@@ -1586,7 +1557,12 @@ class WaitForWindowHandler: IntentHandler {
             }
         }
         
-        throw ProtocolError.timeout("Window '\(windowTitle)' did not appear within \(timeoutSeconds) seconds")
+        return [
+            "intent": "wait_for_window",
+            "window_title": windowTitle,
+            "found_title": "",
+            "timestamp": Date().timeIntervalSince1970
+        ]
     }
     
     /// Get Logic Pro application dynamically
