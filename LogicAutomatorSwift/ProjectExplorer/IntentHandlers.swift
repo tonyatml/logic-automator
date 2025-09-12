@@ -1657,8 +1657,14 @@ class SetExportOptionHandler: IntentHandler {
         context.log("📊 Found \(allElements.count) total elements in dialog")
         
         // Special handling for File Type option
-        if option.lowercased() == "format" || option.lowercased() == "file type" {
+        if option.lowercased() == "format" {
             try await findAndSetFileTypeOption(allElements: allElements, value: value, context: context)
+            return
+        }
+        
+        // Special handling for Bit Depth option
+        if option.lowercased() == "bit depth" {
+            try await findAndSetBitDepthOption(allElements: allElements, value: value, context: context)
             return
         }
         
@@ -1699,7 +1705,7 @@ class SetExportOptionHandler: IntentHandler {
         context.log("🎵 Looking for File Type option in \(allElements.count) elements")
         
         // Look for File Type dropdown - search for various patterns
-        for (index, element) in allElements.enumerated() {
+        for (_, element) in allElements.enumerated() {
             if let role = try await AccessibilityUtil.getElementRole(element),
                let roleValue = try await AccessibilityUtil.getElementValue(element) {
                 
@@ -1738,6 +1744,54 @@ class SetExportOptionHandler: IntentHandler {
         try await setFileTypeByKeyboard(value: value, context: context)
     }
     
+    /// Find and set File Type option from all elements
+    private func findAndSetBitDepthOption(allElements: [AXUIElement], value: Any, context: ExecutionContext) async throws {
+        context.log("🎵 Looking for File Type option in \(allElements.count) elements")
+        
+        // Look for File Type dropdown - search for various patterns
+        for (_, element) in allElements.enumerated() {
+            if let role = try await AccessibilityUtil.getElementRole(element),
+               let roleValue = try await AccessibilityUtil.getElementValue(element) {
+                
+                if role == "AXPopUpButton" && roleValue == "16-bit" {
+                    context.log("🎯 Found File Type dropdown: AXPopUpButton - 16-bit")
+                    
+                    // Click to open the dropdown
+                    try await AccessibilityUtil.clickAtElementPosition(element, elementName: "File Type Dropdown", logCallback: context.log)
+                    try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                    
+                    if value as? Int == 8 {
+                        try await sendKeyPress("up", context: context)
+                        try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                    }
+                    
+                    if value as? Int == 24 {
+                        try await sendKeyPress("down", context: context)
+                        try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                    }
+                    
+                    if value as? Int == 32
+                    {
+                        try await sendKeyPress("down", context: context)
+                        try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                        try await sendKeyPress("down", context: context)
+                        try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                    }
+                    
+                    // Press Enter to confirm selection
+                    try await sendKeyPress("return", context: context)
+                    try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                    
+                    context.log("✅ Bit Depth set to \(value)")
+                    return
+                }
+            }
+        }
+        
+        // Fallback: try keyboard navigation
+        context.log("⚠️ File Type dropdown not found, trying keyboard navigation")
+        try await setFileTypeByKeyboard(value: value, context: context)
+    }
     
     /// Fallback method to set File Type using keyboard navigation
     private func setFileTypeByKeyboard(value: Any, context: ExecutionContext) async throws {
