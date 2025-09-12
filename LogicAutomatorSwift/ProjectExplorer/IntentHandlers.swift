@@ -1614,7 +1614,7 @@ class SetExportOptionHandler: IntentHandler {
                     context.log("🔍 Checking window: title='\(title)', role='\(role)'")
                     
                     // Look for the export dialog - it might be "Open" dialog or contain "Export" in title
-                    if (title.lowercased().contains("export") || 
+                    if (title.lowercased().contains("export") ||
                         title.lowercased().contains("open") ||
                         role.lowercased().contains("dialog") ||
                         role.lowercased().contains("panel")) {
@@ -1668,6 +1668,13 @@ class SetExportOptionHandler: IntentHandler {
             return
         }
         
+        // Special handling for Bit Depth option
+        if option.lowercased() == "include volume/pan automation" || option.lowercased() == "bypass effect plug-ins"
+        || option.lowercased() == "include audio tail" || option.lowercased() == "include tempo information" {
+            try await findAndSetCheckBoxOption(allElements: allElements, option: option, value: value, context: context)
+            return
+        }
+        
         // Look for elements that match the option name
         for (index, element) in allElements.enumerated() {
              let title = try await AccessibilityUtil.getElementTitle(element) ?? "unkown"
@@ -1709,24 +1716,58 @@ class SetExportOptionHandler: IntentHandler {
             if let role = try await AccessibilityUtil.getElementRole(element),
                let roleValue = try await AccessibilityUtil.getElementValue(element) {
                 
-                if role == "AXPopUpButton" && roleValue == "AIFF" {
+                if role == "AXPopUpButton" && (roleValue == "AIFF" || roleValue == "WAVE" || roleValue == "CAF") {
                     context.log("🎯 Found File Type dropdown: AXPopUpButton - AIFF")
                     
                     // Click to open the dropdown
                     try await AccessibilityUtil.clickAtElementPosition(element, elementName: "File Type Dropdown", logCallback: context.log)
                     try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
                     
-                    if value as? String == "WAVE" {
-                        try await sendKeyPress("down", context: context)
-                        try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                    if roleValue == "AIFF" {
+                        
+                        if value as? String == "WAVE" {
+                            try await sendKeyPress("down", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                        }
+                        
+                        if value as? String == "CAF"
+                        {
+                            try await sendKeyPress("down", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                            try await sendKeyPress("down", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                        }
                     }
                     
-                    if value as? String == "CAF"
-                    {
-                        try await sendKeyPress("down", context: context)
-                        try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
-                        try await sendKeyPress("down", context: context)
-                        try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                    if roleValue == "WAVE" {
+                        
+                        if value as? String == "AIFF" {
+                            try await sendKeyPress("up", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                        }
+                        
+                        if value as? String == "CAF"
+                        {
+                            try await sendKeyPress("down", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                        }
+                    }
+                    
+                    if roleValue == "CAF" {
+                        
+                        if value as? String == "AIFF" {
+                            try await sendKeyPress("up", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                            
+                            try await sendKeyPress("up", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                        }
+                        
+                        if value as? String == "WAVE"
+                        {
+                            try await sendKeyPress("up", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                        }
                     }
                     
                     // Press Enter to confirm selection
@@ -1740,8 +1781,7 @@ class SetExportOptionHandler: IntentHandler {
         }
         
         // Fallback: try keyboard navigation
-        context.log("⚠️ File Type dropdown not found, trying keyboard navigation")
-        try await setFileTypeByKeyboard(value: value, context: context)
+        throw ProtocolError.executionFailed("⚠️ File Type dropdown not found, trying keyboard navigation")
     }
     
     /// Find and set File Type option from all elements
@@ -1753,31 +1793,100 @@ class SetExportOptionHandler: IntentHandler {
             if let role = try await AccessibilityUtil.getElementRole(element),
                let roleValue = try await AccessibilityUtil.getElementValue(element) {
                 
-                if role == "AXPopUpButton" && roleValue == "16-bit" {
-                    context.log("🎯 Found File Type dropdown: AXPopUpButton - 16-bit")
+                if role == "AXPopUpButton" && (roleValue.starts(with: "8-bit") || roleValue.starts(with: "16-bit") || roleValue.starts(with: "24-bit") || roleValue.starts(with: "32-bit")) {
+                    context.log("🎯 Found File Type dropdown: AXPopUpButton - \(roleValue)")
                     
                     // Click to open the dropdown
                     try await AccessibilityUtil.clickAtElementPosition(element, elementName: "File Type Dropdown", logCallback: context.log)
                     try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
                     
-                    if value as? Int == 8 {
-                        try await sendKeyPress("up", context: context)
-                        try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                    if roleValue.starts(with: "16-bit") {
+                        if value as? Int == 8 {
+                            try await sendKeyPress("up", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                        }
+                        
+                        if value as? Int == 24 {
+                            try await sendKeyPress("down", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                        }
+                        
+                        if value as? Int == 32
+                        {
+                            try await sendKeyPress("down", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                            try await sendKeyPress("down", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                        }
                     }
                     
-                    if value as? Int == 24 {
-                        try await sendKeyPress("down", context: context)
-                        try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                    if roleValue.starts(with: "8-bit") {
+                        if value as? Int == 16 {
+                            try await sendKeyPress("down", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                        }
+                        
+                        if value as? Int == 24 {
+                            try await sendKeyPress("down", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                            try await sendKeyPress("down", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                        }
+                        
+                        if value as? Int == 32
+                        {
+                            try await sendKeyPress("down", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                            try await sendKeyPress("down", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                            try await sendKeyPress("down", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                        }
                     }
                     
-                    if value as? Int == 32
-                    {
-                        try await sendKeyPress("down", context: context)
-                        try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
-                        try await sendKeyPress("down", context: context)
-                        try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                    if roleValue.starts(with: "24-bit") {
+                        if value as? Int == 16 {
+                            try await sendKeyPress("up", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                        }
+                        
+                        if value as? Int == 8 {
+                            try await sendKeyPress("up", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                            try await sendKeyPress("up", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                        }
+                        
+                        if value as? Int == 32
+                        {
+                            try await sendKeyPress("down", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                        }
                     }
                     
+                    if roleValue.starts(with: "32-bit") {
+                        if value as? Int == 24 {
+                            try await sendKeyPress("up", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                        }
+                        
+                        if value as? Int == 16 {
+                            try await sendKeyPress("up", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                            try await sendKeyPress("up", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                        }
+                        
+                        if value as? Int == 8
+                        {
+                            try await sendKeyPress("up", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                            try await sendKeyPress("up", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                            try await sendKeyPress("up", context: context)
+                            try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                        }
+                    }
                     // Press Enter to confirm selection
                     try await sendKeyPress("return", context: context)
                     try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
@@ -1789,8 +1898,40 @@ class SetExportOptionHandler: IntentHandler {
         }
         
         // Fallback: try keyboard navigation
-        context.log("⚠️ File Type dropdown not found, trying keyboard navigation")
-        try await setFileTypeByKeyboard(value: value, context: context)
+        throw ProtocolError.executionFailed("⚠️ File Type dropdown not found")
+        
+    }
+    
+    /// Find and set File Type option from all elements
+    private func findAndSetCheckBoxOption(allElements: [AXUIElement], option: String, value: Any, context: ExecutionContext) async throws {
+        context.log("🎵 Looking for checkbox \(option) in \(allElements.count) elements")
+        
+        // Look for File Type dropdown - search for various patterns
+        for (_, element) in allElements.enumerated() {
+            if let title = try await AccessibilityUtil.getElementTitle(element),
+               let role = try await AccessibilityUtil.getElementRole(element) {
+                
+                if role == "AXCheckBox" && title.lowercased() == option.lowercased() {
+                    context.log("🎯 Found File Type dropdown: AXCheckBox - \(option)")
+                    
+                    if let currentValue = try await AccessibilityUtil.getElementBoolValue(element), let setTo = value as? Bool {
+                        print("currentValue: \(currentValue), setTo: \(setTo)")
+                        if currentValue != setTo {
+                            try await AccessibilityUtil.clickAtElementPosition(element, elementName: "File Type Dropdown", logCallback: context.log)
+                        }
+                    }
+                    
+                    try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                    
+                    context.log("✅ \(option) set to \(value)")
+                    return
+                }
+            }
+        }
+        
+        // Fallback: try keyboard navigation
+        throw ProtocolError.executionFailed("⚠️ File Type dropdown not found")
+        
     }
     
     /// Fallback method to set File Type using keyboard navigation
