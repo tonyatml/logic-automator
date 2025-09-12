@@ -1,0 +1,73 @@
+{
+  "protocol": "export_all_tracks_with_settings",
+  "description": "Exports all tracks as individual files with normalized levels, plugin rendering, and track name-based filenames.",
+  "tags": ["export", "bounce", "automation", "workflow"],
+  "steps": [
+    {
+      "intent": "open_menu",
+      "parameters": {
+        "menu_path": ["File", "Export", "All Tracks as Audio Files"]
+      }
+    },
+    {
+      "intent": "wait_for_window",
+      "parameters": {
+        "window_title": "Export All Tracks"
+      }
+    },
+    {
+      "intent": "set_export_option",
+      "parameters": {
+        "option": "Format",
+        "value": "WAV"
+      }
+    },
+    {
+      "intent": "set_export_option",
+      "parameters": {
+        "option": "Bit Depth",
+        "value": 24
+      }
+    },
+    {
+      "intent": "set_export_option",
+      "parameters": {
+        "option": "Include Volume/Pan Automation",
+        "value": true
+      }
+    },
+    {
+      "intent": "set_export_option",
+      "parameters": {
+        "option": "Include Plugin Effects",
+        "value": true
+      }
+    },
+    {
+      "intent": "set_export_option",
+      "parameters": {
+        "option": "Normalize",
+        "value": "On"
+      }
+    },
+    {
+      "intent": "set_export_option",
+      "parameters": {
+        "option": "File Naming",
+        "value": "Track Name"
+      }
+    },
+    {
+      "intent": "click_button",
+      "parameters": {
+        "button_text": "Export"
+      }
+    },
+    {
+      "intent": "wait_for_export_completion",
+      "parameters": {
+        "timeout_seconds": 300
+      }
+    }
+  ]
+}

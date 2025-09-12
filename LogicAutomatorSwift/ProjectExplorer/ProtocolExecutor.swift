@@ -306,6 +306,17 @@ class ProtocolExecutor: ObservableObject {
         intentHandlers["set_key"] = SetKeyHandler()
         intentHandlers["save_project"] = SaveProjectHandler()
         
+        // Export operations
+        intentHandlers["open_menu"] = OpenMenuHandler()
+        intentHandlers["wait_for_window"] = WaitForWindowHandler()
+        intentHandlers["set_export_option"] = SetExportOptionHandler()
+        intentHandlers["click_button"] = ClickButtonHandler()
+        intentHandlers["wait_for_export_completion"] = WaitForExportCompletionHandler()
+        
+        // Utility operations
+        intentHandlers["wait"] = WaitHandler()
+        intentHandlers["log"] = LogHandler()
+        
         log("🔧 Registered \(intentHandlers.count) intent handlers")
     }
     
@@ -400,6 +411,7 @@ enum ProtocolError: LocalizedError {
     case logicProNotRunning
     case invalidParameters(String)
     case stepExecutionFailed(String)
+    case timeout(String)
     
     var errorDescription: String? {
         switch self {
@@ -419,6 +431,8 @@ enum ProtocolError: LocalizedError {
             return "Invalid parameters: \(message)"
         case .stepExecutionFailed(let message):
             return "Step execution failed: \(message)"
+        case .timeout(let message):
+            return "Timeout: \(message)"
         }
     }
 }
