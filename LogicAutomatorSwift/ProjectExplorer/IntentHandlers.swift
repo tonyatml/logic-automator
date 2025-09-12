@@ -1686,10 +1686,11 @@ class SetExportOptionHandler: IntentHandler {
              let title = try await AccessibilityUtil.getElementTitle(element) ?? "unkown"
                let description = try await AccessibilityUtil.getElementDescription(element) ?? "unkown"
                let roleDescription = try await AccessibilityUtil.getElementRoleDescription(element) ?? "unkown"
-            let role = try await AccessibilityUtil.getElementRole(element) ?? "unkown"
+               let role = try await AccessibilityUtil.getElementRole(element) ?? "unkown"
+            let value = try await AccessibilityUtil.getElementValue(element) ?? "unkown"
             
                 
-                print("🔍 Element \(index): title='\(title)', description='\(description)', role='\(role)', roleDesc='\(roleDescription)'")
+                //print("🔍 Element \(index): title='\(title)', description='\(description)', role='\(role)', roleDesc='\(roleDescription)',value=\(value)")
                 
                 // Check if this element matches our option
                 if title.lowercased().contains(option.lowercased()) || 
@@ -1702,15 +1703,11 @@ class SetExportOptionHandler: IntentHandler {
                     //return
                 }
             
-            if role == "AXPopUpButton" {
-                AXElementDebugger.printAllElementAttributes(element)
-            }
-            
         }
         
         // If not found by name, try keyboard navigation for common options
         context.log("⚠️ Option not found by name, trying keyboard navigation")
-        try await setExportOptionByKeyboard(option: option, value: value, context: context)
+        //try await setExportOptionByKeyboard(option: option, value: value, context: context)
     }
     
     /// Find and set File Type option from all elements
@@ -2224,7 +2221,7 @@ class ClickButtonHandler: IntentHandler {
             // Get Logic Pro application
             let logicProApp = try await getLogicProApplication(context: context)
             
-            // Get all windows to find the current dialog
+            // Get all windows to find the export dialog
             var windows: CFTypeRef?
             let result = AXUIElementCopyAttributeValue(logicProApp, kAXWindowsAttribute as CFString, &windows)
             
@@ -2233,39 +2230,47 @@ class ClickButtonHandler: IntentHandler {
             }
             
             let windowsArray = windows as! [AXUIElement]
-            var targetWindow: AXUIElement?
+            var exportDialog: AXUIElement?
             
-            // Find the frontmost window (likely the export dialog)
+            // Find the export dialog window
             for window in windowsArray {
-                var focused: CFTypeRef?
-                let focusedResult = AXUIElementCopyAttributeValue(window, kAXFocusedAttribute as CFString, &focused)
-                
-                if focusedResult == .success, let isFocused = focused as? Bool, isFocused {
-                    targetWindow = window
-                    context.log("✅ Found focused window")
-                    break
+                if let title = try await AccessibilityUtil.getElementTitle(window),
+                   let role = try await AccessibilityUtil.getElementRole(window) {
+                    
+                    context.log("🔍 Checking window: title='\(title)', role='\(role)'")
+                    
+                    // Look for the export dialog - it might be "Open" dialog or contain "Export" in title
+                    if (title.lowercased().contains("export") ||
+                        title.lowercased().contains("open") ||
+                        role.lowercased().contains("dialog") ||
+                        role.lowercased().contains("panel")) {
+                        
+                        exportDialog = window
+                        context.log("✅ Found export dialog: '\(title)' (role: \(role))")
+                        break
+                    }
                 }
             }
             
-            // If no focused window, use the first window
-            if targetWindow == nil && !windowsArray.isEmpty {
-                targetWindow = windowsArray[0]
-                context.log("✅ Using first available window")
-            }
-            
-            guard let window = targetWindow else {
-                throw ProtocolError.executionFailed("No window found to click button in")
+            guard let dialog = exportDialog else {
+                throw ProtocolError.executionFailed("Export dialog not found")
             }
             
             // Find and click the button
-            try await findAndClickButton(in: window, buttonText: buttonText, context: context)
+            try await findAndClickButton(in: dialog, buttonText: buttonText, context: context)
             
             context.log("✅ Button '\(buttonText)' clicked successfully")
             
+            // Find and set the export option in the dialog
+            //try await setExportOptionInDialog(dialog, option: option, value: value, context: context)
+            
+            //context.log("✅ Export option '\(option)' set to '\(value)'")
+            
         } catch {
-            context.log("❌ ClickButtonHandler error: \(error.localizedDescription)")
+            context.log("❌ SetExportOptionHandler error: \(error.localizedDescription)")
             throw error
         }
+        
         
         return [
             "intent": "click_button",
