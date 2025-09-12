@@ -142,6 +142,18 @@ class AccessibilityUtil {
         return nil
     }
     
+    /// Get element role
+    static func getElementValue(_ element: AXUIElement) async throws -> String? {
+        var value: CFTypeRef?
+        let valueResult = AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &value)
+        
+        if valueResult == .success, let value = value as? String {
+            return value
+        }
+        
+        return nil
+    }
+    
     /// Get element role description
     static func getElementRoleDescription(_ element: AXUIElement) async throws -> String? {
         var roleDescription: CFTypeRef?

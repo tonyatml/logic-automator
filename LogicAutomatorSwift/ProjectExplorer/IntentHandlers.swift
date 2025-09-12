@@ -1604,28 +1604,34 @@ class SetExportOptionHandler: IntentHandler {
             }
             
             let windowsArray = windows as! [AXUIElement]
-            var exportWindow: AXUIElement?
+            var exportDialog: AXUIElement?
             
-            // Find the export window
+            // Find the export dialog window
             for window in windowsArray {
-                var title: CFTypeRef?
-                let titleResult = AXUIElementCopyAttributeValue(window, kAXTitleAttribute as CFString, &title)
-                
-                if titleResult == .success, let title = title as? String {
-                    if title.contains("Export") || title.contains("export") {
-                        exportWindow = window
-                        context.log("✅ Found export window: '\(title)'")
+                if let title = try await AccessibilityUtil.getElementTitle(window),
+                   let role = try await AccessibilityUtil.getElementRole(window) {
+                    
+                    context.log("🔍 Checking window: title='\(title)', role='\(role)'")
+                    
+                    // Look for the export dialog - it might be "Open" dialog or contain "Export" in title
+                    if (title.lowercased().contains("export") || 
+                        title.lowercased().contains("open") ||
+                        role.lowercased().contains("dialog") ||
+                        role.lowercased().contains("panel")) {
+                        
+                        exportDialog = window
+                        context.log("✅ Found export dialog: '\(title)' (role: \(role))")
                         break
                     }
                 }
             }
             
-            guard let exportWindow = exportWindow else {
-                throw ProtocolError.executionFailed("Export window not found")
+            guard let dialog = exportDialog else {
+                throw ProtocolError.executionFailed("Export dialog not found")
             }
             
-            // Find and set the export option
-            try await setExportOptionInWindow(exportWindow, option: option, value: value, context: context)
+            // Find and set the export option in the dialog
+            try await setExportOptionInDialog(dialog, option: option, value: value, context: context)
             
             context.log("✅ Export option '\(option)' set to '\(value)'")
             
@@ -1642,17 +1648,29 @@ class SetExportOptionHandler: IntentHandler {
         ]
     }
     
-    /// Set export option in the export window
-    private func setExportOptionInWindow(_ window: AXUIElement, option: String, value: Any, context: ExecutionContext) async throws {
-        context.log("🔍 Looking for export option: '\(option)'")
+    /// Set export option by searching in the export dialog
+    private func setExportOptionInDialog(_ dialog: AXUIElement, option: String, value: Any, context: ExecutionContext) async throws {
+        context.log("🔍 Looking for export option: '\(option)' in export dialog")
         
-        // Find all child elements in the window
-        let allElements = try await AccessibilityUtil.findAllChildElements(in: window, maxDepth: 10)
+        // Find all child elements in the dialog
+        let allElements = try await AccessibilityUtil.findAllChildElements(in: dialog, maxDepth: 10)
+        context.log("📊 Found \(allElements.count) total elements in dialog")
+        
+        // Special handling for File Type option
+        if option.lowercased() == "format" || option.lowercased() == "file type" {
+            try await findAndSetFileTypeOption(allElements: allElements, value: value, context: context)
+            return
+        }
         
         // Look for elements that match the option name
-        for element in allElements {
-            if let title = try await AccessibilityUtil.getElementTitle(element),
-               let description = try await AccessibilityUtil.getElementDescription(element) {
+        for (index, element) in allElements.enumerated() {
+             let title = try await AccessibilityUtil.getElementTitle(element) ?? "unkown"
+               let description = try await AccessibilityUtil.getElementDescription(element) ?? "unkown"
+               let roleDescription = try await AccessibilityUtil.getElementRoleDescription(element) ?? "unkown"
+            let role = try await AccessibilityUtil.getElementRole(element) ?? "unkown"
+            
+                
+                print("🔍 Element \(index): title='\(title)', description='\(description)', role='\(role)', roleDesc='\(roleDescription)'")
                 
                 // Check if this element matches our option
                 if title.lowercased().contains(option.lowercased()) || 
@@ -1661,14 +1679,89 @@ class SetExportOptionHandler: IntentHandler {
                     context.log("🎯 Found option element: '\(title)' - '\(description)'")
                     
                     // Try to interact with the element based on its type
-                    try await interactWithExportOption(element, value: value, context: context)
+                    //try await interactWithExportOption(element, value: value, context: context)
+                    //return
+                }
+            
+            if role == "AXPopUpButton" {
+                AXElementDebugger.printAllElementAttributes(element)
+            }
+            
+        }
+        
+        // If not found by name, try keyboard navigation for common options
+        context.log("⚠️ Option not found by name, trying keyboard navigation")
+        try await setExportOptionByKeyboard(option: option, value: value, context: context)
+    }
+    
+    /// Find and set File Type option from all elements
+    private func findAndSetFileTypeOption(allElements: [AXUIElement], value: Any, context: ExecutionContext) async throws {
+        context.log("🎵 Looking for File Type option in \(allElements.count) elements")
+        
+        // Look for File Type dropdown - search for various patterns
+        for (index, element) in allElements.enumerated() {
+            if let role = try await AccessibilityUtil.getElementRole(element),
+               let roleValue = try await AccessibilityUtil.getElementValue(element) {
+                
+                if role == "AXPopUpButton" && roleValue == "AIFF" {
+                    context.log("🎯 Found File Type dropdown: AXPopUpButton - AIFF")
+                    
+                    // Click to open the dropdown
+                    try await AccessibilityUtil.clickAtElementPosition(element, elementName: "File Type Dropdown", logCallback: context.log)
+                    try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                    
+                    if value as? String == "WAVE" {
+                        try await sendKeyPress("down", context: context)
+                        try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                    }
+                    
+                    if value as? String == "CAF"
+                    {
+                        try await sendKeyPress("down", context: context)
+                        try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                        try await sendKeyPress("down", context: context)
+                        try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                    }
+                    
+                    // Press Enter to confirm selection
+                    try await sendKeyPress("return", context: context)
+                    try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                    
+                    context.log("✅ File Type set to \(value)")
                     return
                 }
             }
         }
         
-        // If not found by name, try keyboard navigation for common options
-        try await setExportOptionByKeyboard(option: option, value: value, context: context)
+        // Fallback: try keyboard navigation
+        context.log("⚠️ File Type dropdown not found, trying keyboard navigation")
+        try await setFileTypeByKeyboard(value: value, context: context)
+    }
+    
+    
+    /// Fallback method to set File Type using keyboard navigation
+    private func setFileTypeByKeyboard(value: Any, context: ExecutionContext) async throws {
+        context.log("⌨️ Setting File Type using keyboard navigation")
+        
+        // Press Tab to navigate to File Type dropdown
+        for _ in 1...3 {
+            try await sendKeyPress("tab", context: context)
+            try await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+        }
+        
+        // Press Space or Enter to open dropdown
+        try await sendKeyPress("space", context: context)
+        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        
+        // Type the format name
+        let valueString = String(describing: value).uppercased()
+        for char in valueString {
+            try await sendKeyPress(String(char), context: context)
+            try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+        }
+        
+        // Press Enter to confirm
+        try await sendKeyPress("return", context: context)
     }
     
     /// Interact with export option element
